@@ -1,0 +1,15 @@
+# PostgreSQL Database Configuration
+# 올바른 형식: postgresql://username:password@host:port/database
+DATABASE_URL=postgresql://username:password@localhost:5432/hanja_db
+
+# 사용할 PostgreSQL 스키마 이름 (기본값: public)
+DATABASE_SCHEMA=hanja_schema
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+
+# 참고:
+# - pgbouncer를 사용하는 경우, DATABASE_URL은 pgbouncer 서버 주소를 가리켜야 합니다
+# - 예: postgresql://username:password@pgbouncer-host:6432/hanja_db
+# - pgbouncer는 연결 옵션이 아니라 별도의 연결 풀러 서버입니다
