@@ -1,0 +1,106 @@
+.wrong-answers {
+  padding: 1.5rem 1rem;
+}
+
+.wrong-answers-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.wrong-answers-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.wrong-answers-header p {
+  color: #666;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+}
+
+.wrong-answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wrong-answer-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hanja-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.hanja-character {
+  font-size: 6rem;
+  font-weight: 500;
+  min-width: 80px;
+  text-align: center;
+}
+
+.hanja-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.label {
+  font-weight: 600;
+  color: #666;
+  min-width: 40px;
+}
+
+.value {
+  color: #1a1a1a;
+}
+
+.remove-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-button:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+@media (min-width: 768px) {
+  .wrong-answers {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+}
+

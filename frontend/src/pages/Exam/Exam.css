@@ -1,0 +1,28 @@
+.exam {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.exam-header {
+  margin-bottom: 2rem;
+}
+
+.exam-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.exam-header p {
+  color: #666;
+}
+
+.exam-content {
+  padding: 3rem 1rem;
+}
+
+.coming-soon {
+  font-size: 1.25rem;
+  color: #666;
+}
+

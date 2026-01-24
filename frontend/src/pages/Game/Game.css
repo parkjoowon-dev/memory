@@ -1,0 +1,28 @@
+.game {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.game-header {
+  margin-bottom: 2rem;
+}
+
+.game-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.game-header p {
+  color: #666;
+}
+
+.game-content {
+  padding: 3rem 1rem;
+}
+
+.coming-soon {
+  font-size: 1.25rem;
+  color: #666;
+}
+
