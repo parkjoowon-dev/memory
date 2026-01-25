@@ -1,7 +1,7 @@
 import { Hanja } from '../types/hanja'
 
 // API 기본 URL (환경 변수에서 가져오거나 기본값 사용)
-const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 export interface ApiResponse<T> {
   data?: T
