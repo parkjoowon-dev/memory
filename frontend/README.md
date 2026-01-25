@@ -28,8 +28,29 @@
 npm install
 ```
 
+### 환경 변수 설정
+
+프론트엔드에서 백엔드 API를 사용하려면 `.env` 파일을 생성하세요:
+
+```bash
+# frontend/.env 파일 생성
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**참고:**
+- 개발 환경: `http://localhost:8000` (백엔드 서버 주소)
+- 프로덕션: 실제 배포된 백엔드 서버 URL
+- 환경 변수가 없으면 기본값 `http://localhost:8000`을 사용합니다.
+
 ### 개발 서버 실행
 
+**1. 백엔드 서버 실행** (별도 터미널)
+```bash
+cd backend
+uvicorn main:app --reload
+```
+
+**2. 프론트엔드 개발 서버 실행**
 ```bash
 npm run dev
 ```

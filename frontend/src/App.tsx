@@ -13,14 +13,38 @@ import { useStore } from './store/useStore'
 import { sampleHanja } from './data/sampleHanja'
 
 function App() {
-  const { setHanjaList, hanjaList } = useStore()
+  const { loadHanjaList, hanjaList, isLoading, error } = useStore()
 
-  // 샘플 데이터 초기화
+  // API에서 한자 데이터 로드
   useEffect(() => {
-    if (hanjaList.length === 0) {
+    loadHanjaList()
+  }, [loadHanjaList])
+
+  // API 로드 실패 시 샘플 데이터로 폴백
+  useEffect(() => {
+    if (error && hanjaList.length === 0) {
+      console.warn('⚠️ API 로드 실패, 샘플 데이터를 사용합니다.')
+      const { setHanjaList } = useStore.getState()
       setHanjaList(sampleHanja)
     }
-  }, [hanjaList.length, setHanjaList])
+  }, [error, hanjaList.length])
+
+  // 로딩 중 표시 (선택사항)
+  if (isLoading && hanjaList.length === 0) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        <div>한자 데이터를 불러오는 중...</div>
+        {error && <div style={{ color: 'red', fontSize: '0.9rem' }}>오류: {error}</div>}
+      </div>
+    )
+  }
 
   return (
     <Router>
