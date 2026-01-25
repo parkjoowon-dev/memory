@@ -153,12 +153,20 @@ const SwipeGuide = styled.div`
 
 const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   const [showInfo, setShowInfo] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
   const controls = useAnimation()
 
   useEffect(() => {
     setShowInfo(false)
-    // 카드 초기화
-    controls.set({ y: 0, opacity: 1, scale: 1 })
+    setIsVisible(true)
+    
+    // 카드 초기화 - 명시적으로 opacity를 1로 설정
+    controls.start({ 
+      y: 0, 
+      opacity: 1, 
+      scale: 1,
+      transition: { duration: 0.3 }
+    })
     
     const timer = setTimeout(() => {
       setShowInfo(true)
@@ -173,14 +181,20 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     if (info.offset.y < -threshold || velocity < -500) {
       // 위로 스와이프 (알고 있음)
       await controls.start({ y: -500, opacity: 0, transition: { duration: 0.2 } })
+      setIsVisible(false)
       onSwipe('known')
     } else if (info.offset.y > threshold || velocity > 500) {
       // 아래로 스와이프 (모름)
       await controls.start({ y: 500, opacity: 0, transition: { duration: 0.2 } })
+      setIsVisible(false)
       onSwipe('unknown')
     } else {
-      // 제자리로 복귀
-      controls.start({ y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } })
+      // 제자리로 복귀 - opacity도 명시적으로 1로 설정
+      controls.start({ 
+        y: 0, 
+        opacity: 1,
+        transition: { type: 'spring', stiffness: 300, damping: 20 } 
+      })
     }
   }
 
@@ -191,9 +205,9 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
         dragElastic={0.7}
         onDragEnd={handleDragEnd}
         animate={controls}
-        initial={{ opacity: 0, scale: 0.9, y: 50 }}
-        whileInView={{ opacity: 1, scale: 1, y: 0 }}
+        initial={{ opacity: 1, scale: 1, y: 0 }}
         whileDrag={{ cursor: 'grabbing' }}
+        style={{ opacity: isVisible ? undefined : 0 }}
       >
         <Main>
           <Character>{hanja.character}</Character>
