@@ -312,7 +312,7 @@ const Quiz = () => {
     <Screen>
       <Content>
         <HanjaCard
-          key={currentHanja.id}
+          key={`${currentHanja.id}-${currentIndex}-${isChapterMode ? `chapter-${chapter}` : 'all'}`}
           hanja={currentHanja}
           onSwipe={handleSwipe}
         />

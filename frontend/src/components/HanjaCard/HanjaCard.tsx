@@ -175,29 +175,53 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     setIsMounted(true)
     setShowInfo(false)
     
-    // 카드 초기화 - 명시적으로 opacity를 1로 설정
-    // 서버 환경에서도 확실하게 적용되도록 즉시 실행
-    const initAnimation = async () => {
-      await controls.set({ y: 0, opacity: 1, scale: 1 })
-      // 약간의 지연 후 애니메이션 시작 (서버 환경 대응)
-      await controls.start({ 
+    // 카드 초기화 - 명시적으로 opacity와 y를 리셋
+    // 이전 스와이프 상태가 남아있을 수 있으므로 강제로 리셋
+    // 즉시 상태를 리셋 (애니메이션 없이) - 동기적으로 실행
+    controls.set({ y: 0, opacity: 1, scale: 1 })
+    
+    // 짧은 지연 후 애니메이션 시작 (상태가 확실히 리셋되도록)
+    const timeoutId = setTimeout(() => {
+      controls.start({ 
         y: 0, 
         opacity: 1, 
         scale: 1,
         transition: { duration: 0.2 }
+      }).catch(() => {
+        // 에러 무시 (컴포넌트가 언마운트된 경우)
       })
-    }
-    initAnimation()
+    }, 10)
     
     const timer = setTimeout(() => {
       setShowInfo(true)
     }, 2500)
+    
+    // cleanup 함수: hanja가 변경될 때 타이머와 상태 리셋
     return () => {
       clearTimeout(timer)
+      clearTimeout(timeoutId)
+      setShowInfo(false)
+      // cleanup 시에도 상태를 리셋
+      try {
+        controls.set({ y: 0, opacity: 1, scale: 1 })
+      } catch {
+        // 에러 무시
+      }
     }
-  }, [hanja, controls])
+  }, [hanja.id, controls]) // hanja.id를 의존성으로 사용하여 같은 한자라도 다른 인스턴스로 인식
 
   const handleDragEnd = async (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    // 음과 뜻이 표시되기 전에는 스와이프 무시 (선택사항)
+    // 주석 처리: 사용자가 빠르게 스와이프할 수 있도록 허용
+    // if (!showInfo) {
+    //   await controls.start({ 
+    //     y: 0, 
+    //     opacity: 1,
+    //     transition: { type: 'spring', stiffness: 300, damping: 20 } 
+    //   })
+    //   return
+    // }
+    
     const threshold = 100
     const velocity = info.velocity.y
 
@@ -240,6 +264,7 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   return (
     <Container>
       <Card
+        key={`card-${hanja.id}`}
         drag="y"
         dragElastic={0.7}
         onDragEnd={handleDragEnd}
