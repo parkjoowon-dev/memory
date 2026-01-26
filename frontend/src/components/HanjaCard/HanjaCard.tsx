@@ -113,7 +113,7 @@ const InfoLabel = styled.span`
 
 const InfoValue = styled.span`
   font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif !important;
-  font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
   font-weight: 500;
   color: #1a1a1a;
   flex: 1;
