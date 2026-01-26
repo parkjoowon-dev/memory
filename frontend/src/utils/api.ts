@@ -151,3 +151,76 @@ export async function saveStudyProgress(
     }
   }
 }
+
+// 연습 진행 상태 타입
+export interface PracticeProgress {
+  user_id: string
+  hanja_id: string
+  chapter: number
+  is_known: boolean
+}
+
+export interface PracticeProgressListResponse {
+  progress: PracticeProgress[]
+}
+
+/**
+ * 특정 사용자의 모든 연습 진행 상태 가져오기
+ */
+export async function fetchAllPracticeProgress(
+  userId: string = 'default'
+): Promise<ApiResponse<PracticeProgressListResponse>> {
+  return fetchApi<PracticeProgressListResponse>(`/api/practice-progress/${userId}`)
+}
+
+/**
+ * 특정 사용자의 특정 단원 연습 진행 상태 가져오기
+ */
+export async function fetchPracticeProgressByChapter(
+  userId: string = 'default',
+  chapter: number
+): Promise<ApiResponse<PracticeProgressListResponse>> {
+  return fetchApi<PracticeProgressListResponse>(`/api/practice-progress/${userId}/chapter/${chapter}`)
+}
+
+/**
+ * 특정 사용자의 특정 한자 연습 진행 상태 가져오기
+ */
+export async function fetchPracticeProgress(
+  userId: string = 'default',
+  hanjaId: string
+): Promise<ApiResponse<PracticeProgress>> {
+  return fetchApi<PracticeProgress>(`/api/practice-progress/${userId}/hanja/${hanjaId}`)
+}
+
+/**
+ * 연습 진행 상태 저장/업데이트
+ */
+export async function savePracticeProgress(
+  progress: PracticeProgress
+): Promise<ApiResponse<PracticeProgress>> {
+  const API_BASE_URL = getApiBaseUrl()
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/practice-progress` : '/api/practice-progress'
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(progress),
+    })
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return { data }
+  } catch (error) {
+    console.error('API 호출 오류:', error)
+    return {
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+    }
+  }
+}

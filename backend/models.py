@@ -47,3 +47,24 @@ class StudyProgressModel(Base):
 
     def __repr__(self) -> str:
         return f"<StudyProgressModel(user_id={self.user_id}, hanja_id={self.hanja_id}, is_known={self.is_known})>"
+
+
+class PracticeProgressModel(Base):
+    """연습 진행 상태 모델 (ORM)"""
+    __tablename__ = "practice_progress"
+    __table_args__ = (
+        Index("idx_practice_user_hanja", "user_id", "hanja_id"),
+        Index("idx_practice_user_chapter", "user_id", "chapter"),
+        {"schema": settings.database_schema},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False, index=True, default="default")
+    hanja_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    chapter: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    is_known: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return f"<PracticeProgressModel(user_id={self.user_id}, hanja_id={self.hanja_id}, is_known={self.is_known})>"

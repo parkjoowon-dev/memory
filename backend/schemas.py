@@ -88,3 +88,32 @@ class StudyProgressResponse(BaseModel):
 class StudyProgressListResponse(BaseModel):
     """학습 진행 상태 리스트 응답 스키마"""
     progress: List[StudyProgressResponse]
+
+
+class PracticeProgress(BaseModel):
+    """연습 진행 상태 스키마"""
+    user_id: str = "default"
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class PracticeProgressCreate(BaseModel):
+    """연습 진행 상태 생성용 스키마"""
+    user_id: str = "default"
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class PracticeProgressResponse(BaseModel):
+    """연습 진행 상태 응답 스키마"""
+    user_id: str
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class PracticeProgressListResponse(BaseModel):
+    """연습 진행 상태 리스트 응답 스키마"""
+    progress: List[PracticeProgressResponse]

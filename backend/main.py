@@ -8,11 +8,14 @@ from crud import (
     get_all_hanja, get_hanja_by_id, get_hanja_by_chapter,
     create_hanja, update_hanja, delete_hanja,
     get_study_progress, get_study_progress_by_chapter, get_all_study_progress,
-    upsert_study_progress, delete_study_progress
+    upsert_study_progress, delete_study_progress,
+    get_practice_progress, get_practice_progress_by_chapter, get_all_practice_progress,
+    upsert_practice_progress, delete_practice_progress
 )
 from schemas import (
     HanjaListResponse, Hanja, HanjaCreate, HanjaUpdate,
-    StudyProgress, StudyProgressCreate, StudyProgressResponse, StudyProgressListResponse
+    StudyProgress, StudyProgressCreate, StudyProgressResponse, StudyProgressListResponse,
+    PracticeProgress, PracticeProgressCreate, PracticeProgressResponse, PracticeProgressListResponse
 )
 from typing import List, Optional
 import os
@@ -196,6 +199,88 @@ async def delete_study_progress_endpoint(
     success = delete_study_progress(db, user_id, hanja_id)
     if not success:
         raise HTTPException(status_code=404, detail="학습 진행 상태를 찾을 수 없습니다.")
+    return None
+
+
+# 연습 진행 상태 API 엔드포인트
+@app.get("/api/practice-progress/{user_id}", response_model=PracticeProgressListResponse)
+async def get_all_practice_progress_endpoint(user_id: str, db: Session = Depends(get_db)):
+    """특정 사용자의 모든 연습 진행 상태를 반환합니다."""
+    progress_list = get_all_practice_progress(db, user_id)
+    return {"progress": progress_list}
+
+
+@app.get("/api/practice-progress/{user_id}/chapter/{chapter}", response_model=PracticeProgressListResponse)
+async def get_practice_progress_by_chapter_endpoint(
+    user_id: str, 
+    chapter: int, 
+    db: Session = Depends(get_db)
+):
+    """특정 사용자의 특정 단원 연습 진행 상태를 반환합니다."""
+    progress_list = get_practice_progress_by_chapter(db, user_id, chapter)
+    return {"progress": progress_list}
+
+
+@app.get("/api/practice-progress/{user_id}/hanja/{hanja_id}", response_model=PracticeProgressResponse)
+async def get_practice_progress_endpoint(
+    user_id: str, 
+    hanja_id: str, 
+    db: Session = Depends(get_db)
+):
+    """특정 사용자의 특정 한자 연습 진행 상태를 반환합니다."""
+    progress = get_practice_progress(db, user_id, hanja_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="연습 진행 상태를 찾을 수 없습니다.")
+    return progress
+
+
+@app.post("/api/practice-progress", response_model=PracticeProgressResponse, status_code=201)
+async def create_practice_progress_endpoint(
+    progress: PracticeProgressCreate, 
+    db: Session = Depends(get_db)
+):
+    """연습 진행 상태를 저장하거나 업데이트합니다."""
+    progress_data = {
+        "user_id": progress.user_id,
+        "hanja_id": progress.hanja_id,
+        "chapter": progress.chapter,
+        "is_known": progress.is_known
+    }
+    created = upsert_practice_progress(db, progress_data)
+    return created
+
+
+@app.put("/api/practice-progress/{user_id}/hanja/{hanja_id}", response_model=PracticeProgressResponse)
+async def update_practice_progress_endpoint(
+    user_id: str,
+    hanja_id: str,
+    progress: PracticeProgressCreate,
+    db: Session = Depends(get_db)
+):
+    """연습 진행 상태를 업데이트합니다."""
+    if progress.user_id != user_id or progress.hanja_id != hanja_id:
+        raise HTTPException(status_code=400, detail="URL과 요청 본문의 user_id 또는 hanja_id가 일치하지 않습니다.")
+    
+    progress_data = {
+        "user_id": progress.user_id,
+        "hanja_id": progress.hanja_id,
+        "chapter": progress.chapter,
+        "is_known": progress.is_known
+    }
+    updated = upsert_practice_progress(db, progress_data)
+    return updated
+
+
+@app.delete("/api/practice-progress/{user_id}/hanja/{hanja_id}", status_code=204)
+async def delete_practice_progress_endpoint(
+    user_id: str, 
+    hanja_id: str, 
+    db: Session = Depends(get_db)
+):
+    """연습 진행 상태를 삭제합니다."""
+    success = delete_practice_progress(db, user_id, hanja_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="연습 진행 상태를 찾을 수 없습니다.")
     return None
 
 # 정적 파일 서빙 설정 (Docker 빌드 시 static 폴더에 프론트엔드 빌드 결과가 있음)
