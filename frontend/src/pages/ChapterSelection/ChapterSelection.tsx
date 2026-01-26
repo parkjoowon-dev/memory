@@ -8,14 +8,12 @@ const ChapterSelection = () => {
   const navigate = useNavigate()
   const { hanjaList, userName } = useStore()
   const [studyProgress, setStudyProgress] = useState<Map<number, { known: number; total: number }>>(new Map())
-  const [isLoading, setIsLoading] = useState(true)
   
   const userId = userName || 'default'
   
   // DB에서 학습 진행 상태 불러오기
   useEffect(() => {
     const loadProgress = async () => {
-      setIsLoading(true)
       try {
         const response = await fetchAllStudyProgress(userId)
         if (response.data) {
@@ -41,8 +39,6 @@ const ChapterSelection = () => {
         }
       } catch (error) {
         console.error('학습 진행 상태 불러오기 실패:', error)
-      } finally {
-        setIsLoading(false)
       }
     }
     

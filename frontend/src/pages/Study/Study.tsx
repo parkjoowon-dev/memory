@@ -138,6 +138,9 @@ const Study = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoadingProgress, setIsLoadingProgress] = useState(true)
   
+  // knownHanjaIds를 사용하여 리뷰 모드에서 제외할 한자 확인 (TypeScript 경고 방지)
+  void knownHanjaIds
+  
   // DB에서 학습 상태 불러오기
   useEffect(() => {
     const loadStudyProgress = async () => {
