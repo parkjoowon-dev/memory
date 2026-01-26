@@ -1,19 +1,68 @@
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
+import { fetchAllStudyProgress } from '../../utils/api'
 import './ChapterSelection.css'
 
 const ChapterSelection = () => {
   const navigate = useNavigate()
-  const { hanjaList, progress } = useStore()
+  const { hanjaList, userName } = useStore()
+  const [studyProgress, setStudyProgress] = useState<Map<number, { known: number; total: number }>>(new Map())
+  const [isLoading, setIsLoading] = useState(true)
+  
+  const userId = userName || 'default'
+  
+  // DB에서 학습 진행 상태 불러오기
+  useEffect(() => {
+    const loadProgress = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetchAllStudyProgress(userId)
+        if (response.data) {
+          // 단원별로 학습 상태 집계
+          const progressMap = new Map<number, { known: number; total: number }>()
+          
+          // 각 단원별로 초기화
+          for (let i = 1; i <= 10; i++) {
+            progressMap.set(i, { known: 0, total: 0 })
+          }
+          
+          // 학습한 한자들을 단원별로 집계
+          response.data.progress.forEach((p) => {
+            const chapter = p.chapter
+            const current = progressMap.get(chapter) || { known: 0, total: 0 }
+            progressMap.set(chapter, {
+              known: p.is_known ? current.known + 1 : current.known,
+              total: current.total + 1
+            })
+          })
+          
+          setStudyProgress(progressMap)
+        }
+      } catch (error) {
+        console.error('학습 진행 상태 불러오기 실패:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadProgress()
+  }, [userId])
   
   // 단원별 한자 개수 계산
   const chapters = Array.from({ length: 10 }, (_, i) => {
     const chapterId = i + 1
     const chapterHanja = hanjaList.filter((h) => h.chapter === chapterId)
-    const chapterProgress = progress.find((p) => p.chapter === chapterId)
-    const completedCount = chapterProgress?.completedHanja.length || 0
+    const chapterProgress = studyProgress.get(chapterId) || { known: 0, total: 0 }
+    
+    // 학습한 한자 수 (알고 있음 + 모름 모두 포함)
+    const studiedCount = chapterProgress.total
+    // 알고 있는 한자 수
+    const knownCount = chapterProgress.known
+    
+    // 프로그레스는 학습한 한자 수 기준 (알고 있음 + 모름)
     const progressPercent = chapterHanja.length > 0 
-      ? (completedCount / chapterHanja.length) * 100 
+      ? (studiedCount / chapterHanja.length) * 100 
       : 0
     
     return {
@@ -21,7 +70,9 @@ const ChapterSelection = () => {
       title: `${chapterId}단원`,
       hanjaCount: chapterHanja.length,
       progress: progressPercent,
-      completed: progressPercent === 100,
+      completed: progressPercent === 100 && knownCount === studiedCount, // 모든 한자를 알고 있어야 완료
+      studiedCount,
+      knownCount,
     }
   })
 

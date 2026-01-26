@@ -136,9 +136,9 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 const Quiz = () => {
   const { chapterId } = useParams<{ chapterId: string }>()
   const navigate = useNavigate()
-  const { hanjaList } = useStore()
+  const { hanjaList, userName } = useStore()
   
-  const userId = 'default'
+  const userId = userName || 'default'
   const chapter = chapterId ? parseInt(chapterId) : null
   const isChapterMode = chapter !== null
   
@@ -159,6 +159,17 @@ const Quiz = () => {
       // 전체 모드: 학습했던 한자만 (알고 있음 또는 모름으로 표시된 한자)
       const studiedIds = new Set([...knownHanjaIds, ...unknownHanjaIds])
       filtered = hanjaList.filter((h) => studiedIds.has(h.id))
+      
+      // 디버깅: 학습 상태 확인
+      if (studiedIds.size === 0) {
+        console.warn('⚠️ 학습한 한자가 없습니다. 전체 연습을 하려면 먼저 학습을 시작해주세요.')
+      } else {
+        console.log('📚 전체 연습 필터링:', {
+          전체한자수: hanjaList.length,
+          학습한한자수: studiedIds.size,
+          필터된한자수: filtered.length
+        })
+      }
     }
     
     // 랜덤으로 섞기
@@ -177,7 +188,9 @@ const Quiz = () => {
           response = await fetchAllStudyProgress(userId)
         }
         
-        if (response.data) {
+        if (response.error) {
+          console.error('학습 상태 불러오기 오류:', response.error)
+        } else if (response.data) {
           const knownIds = new Set<string>()
           const unknownIds: string[] = []
           
@@ -191,6 +204,11 @@ const Quiz = () => {
           
           setKnownHanjaIds(knownIds)
           setUnknownHanjaIds(unknownIds)
+          console.log('학습 상태 불러오기 성공:', { 
+            knownCount: knownIds.size, 
+            unknownCount: unknownIds.length,
+            totalProgress: response.data.progress.length 
+          })
         }
       } catch (error) {
         console.error('학습 상태 불러오기 실패:', error)
@@ -214,12 +232,21 @@ const Quiz = () => {
     
     // DB에 학습 상태 저장
     try {
-      await saveStudyProgress({
+      const saveResponse = await saveStudyProgress({
         user_id: userId,
         hanja_id: currentHanja.id,
         chapter: currentHanja.chapter,
         is_known: isKnown
       })
+      
+      if (saveResponse.error) {
+        console.error('학습 상태 저장 오류:', saveResponse.error)
+      } else {
+        console.log('학습 상태 저장 성공:', { 
+          hanja_id: currentHanja.id, 
+          is_known: isKnown 
+        })
+      }
     } catch (error) {
       console.error('학습 상태 저장 실패:', error)
     }

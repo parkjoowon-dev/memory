@@ -3,6 +3,10 @@ import { Hanja, Progress, QuizResult, ExamResult } from '../types/hanja'
 import { fetchHanjaList } from '../utils/api'
 
 interface AppState {
+  // 사용자 이름
+  userName: string
+  setUserName: (name: string) => void
+  
   // 한자 데이터
   hanjaList: Hanja[]
   setHanjaList: (hanja: Hanja[]) => void
@@ -32,8 +36,24 @@ interface AppState {
   setCurrentChapter: (chapter: number | null) => void
 }
 
+// 로컬 스토리지에서 사용자 이름 불러오기
+const getStoredUserName = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('hanja_user_name') || ''
+  }
+  return ''
+}
+
+// 로컬 스토리지에 사용자 이름 저장
+const saveUserName = (name: string) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('hanja_user_name', name)
+  }
+}
+
 export const useStore = create<AppState>((set, get) => ({
   // 초기 상태
+  userName: getStoredUserName(),
   hanjaList: [],
   progress: [],
   quizResults: [],
@@ -42,6 +62,12 @@ export const useStore = create<AppState>((set, get) => ({
   currentChapter: null,
   isLoading: false,
   error: null,
+  
+  // 사용자 이름 설정 (로컬 스토리지에도 저장)
+  setUserName: (name) => {
+    saveUserName(name)
+    set({ userName: name })
+  },
   
   // Actions
   setHanjaList: (hanja) => set({ hanjaList: hanja, error: null }),

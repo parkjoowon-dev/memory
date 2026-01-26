@@ -125,11 +125,11 @@ const EmptyButton = styled.button`
 const Study = () => {
   const { chapterId } = useParams<{ chapterId: string }>()
   const navigate = useNavigate()
-  const { hanjaList } = useStore()
+  const { hanjaList, userName } = useStore()
   
   const chapter = chapterId ? parseInt(chapterId) : 1
   const allChapterHanja = hanjaList.filter((h) => h.chapter === chapter)
-  const userId = 'default' // 나중에 사용자 인증 추가 시 변경
+  const userId = userName || 'default'
   
   // 학습 상태 관리
   const [knownHanjaIds, setKnownHanjaIds] = useState<Set<string>>(new Set())
@@ -192,12 +192,22 @@ const Study = () => {
     
     // DB에 학습 상태 저장
     try {
-      await saveStudyProgress({
+      const saveResponse = await saveStudyProgress({
         user_id: userId,
         hanja_id: currentHanja.id,
         chapter: chapter,
         is_known: isKnown
       })
+      
+      if (saveResponse.error) {
+        console.error('학습 상태 저장 오류:', saveResponse.error)
+      } else {
+        console.log('학습 상태 저장 성공:', { 
+          hanja_id: currentHanja.id, 
+          chapter: chapter,
+          is_known: isKnown 
+        })
+      }
     } catch (error) {
       console.error('학습 상태 저장 실패:', error)
       // 저장 실패해도 UI는 업데이트 (사용자 경험 개선)
