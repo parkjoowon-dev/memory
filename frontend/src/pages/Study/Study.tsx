@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import { useStore } from '../../store/useStore'
 import HanjaCard from '../../components/HanjaCard/HanjaCard'
+import { 
+  fetchStudyProgressByChapter, 
+  saveStudyProgress
+} from '../../utils/api'
 
 const Screen = styled.div`
   padding: 0;
@@ -124,23 +128,141 @@ const Study = () => {
   const { hanjaList } = useStore()
   
   const chapter = chapterId ? parseInt(chapterId) : 1
-  const chapterHanja = hanjaList.filter((h) => h.chapter === chapter)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const allChapterHanja = hanjaList.filter((h) => h.chapter === chapter)
+  const userId = 'default' // 나중에 사용자 인증 추가 시 변경
   
-  const currentHanja = chapterHanja[currentIndex]
-  const progressPercent = chapterHanja.length > 0 
-    ? ((currentIndex + 1) / chapterHanja.length) * 100 
+  // 학습 상태 관리
+  const [knownHanjaIds, setKnownHanjaIds] = useState<Set<string>>(new Set())
+  const [unknownHanjaIds, setUnknownHanjaIds] = useState<string[]>([])
+  const [isReviewMode, setIsReviewMode] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true)
+  
+  // DB에서 학습 상태 불러오기
+  useEffect(() => {
+    const loadStudyProgress = async () => {
+      setIsLoadingProgress(true)
+      try {
+        const response = await fetchStudyProgressByChapter(userId, chapter)
+        if (response.data) {
+          const knownIds = new Set<string>()
+          const unknownIds: string[] = []
+          
+          response.data.progress.forEach((p) => {
+            if (p.is_known) {
+              knownIds.add(p.hanja_id)
+            } else {
+              unknownIds.push(p.hanja_id)
+            }
+          })
+          
+          setKnownHanjaIds(knownIds)
+          setUnknownHanjaIds(unknownIds)
+        }
+      } catch (error) {
+        console.error('학습 상태 불러오기 실패:', error)
+      } finally {
+        setIsLoadingProgress(false)
+      }
+    }
+    
+    loadStudyProgress()
+  }, [chapter, userId])
+  
+  // 현재 학습할 한자 리스트 계산
+  const studyList = useMemo(() => {
+    if (isReviewMode) {
+      // 리뷰 모드: 모르는 한자만 다시 학습
+      return allChapterHanja.filter((h) => unknownHanjaIds.includes(h.id))
+    } else {
+      // 일반 모드: 모든 한자 학습
+      return allChapterHanja
+    }
+  }, [allChapterHanja, unknownHanjaIds, isReviewMode])
+  
+  const currentHanja = studyList[currentIndex]
+  const progressPercent = studyList.length > 0 
+    ? ((currentIndex + 1) / studyList.length) * 100 
     : 0
 
-  const handleSwipe = (result: 'known' | 'unknown') => {
-    // TODO: result에 따라 학습 상태 저장 (알고 있음/모름)
-    void result
-    if (currentIndex < chapterHanja.length - 1) {
+  const handleSwipe = async (result: 'known' | 'unknown') => {
+    if (!currentHanja) return
+    
+    const isKnown = result === 'known'
+    
+    // DB에 학습 상태 저장
+    try {
+      await saveStudyProgress({
+        user_id: userId,
+        hanja_id: currentHanja.id,
+        chapter: chapter,
+        is_known: isKnown
+      })
+    } catch (error) {
+      console.error('학습 상태 저장 실패:', error)
+      // 저장 실패해도 UI는 업데이트 (사용자 경험 개선)
+    }
+    
+    // 상태 업데이트
+    if (isKnown) {
+      // 알고 있음: knownHanjaIds에 추가
+      setKnownHanjaIds((prev) => new Set(prev).add(currentHanja.id))
+      // unknownHanjaIds에서 제거
+      setUnknownHanjaIds((prev) => prev.filter((id) => id !== currentHanja.id))
+    } else {
+      // 모름: unknownHanjaIds에 추가 (중복 방지)
+      setUnknownHanjaIds((prev) => {
+        if (!prev.includes(currentHanja.id)) {
+          return [...prev, currentHanja.id]
+        }
+        return prev
+      })
+    }
+    
+    // 다음 한자로 이동
+    if (currentIndex < studyList.length - 1) {
       setCurrentIndex(prev => prev + 1)
     } else {
-      alert('학습이 완료되었습니다!')
-      navigate('/chapters')
+      // 모든 한자를 다 봤을 때
+      if (!isReviewMode) {
+        // 일반 모드에서 끝났으면, 모르는 한자가 있는지 확인
+        // 함수형 업데이트로 최신 값 확인
+        setUnknownHanjaIds((prev) => {
+          const finalUnknownIds = result === 'unknown' && !prev.includes(currentHanja.id)
+            ? [...prev, currentHanja.id]
+            : result === 'known'
+            ? prev.filter((id) => id !== currentHanja.id)
+            : prev
+          
+          // 다음 렌더링 사이클에서 리뷰 모드 전환 또는 완료 처리
+          setTimeout(() => {
+            if (finalUnknownIds.length > 0) {
+              // 모르는 한자가 있으면 리뷰 모드로 전환
+              setIsReviewMode(true)
+              setCurrentIndex(0)
+            } else {
+              // 모든 한자를 알고 있으면 완료
+              alert('학습이 완료되었습니다!')
+              navigate('/chapters')
+            }
+          }, 100)
+          
+          return finalUnknownIds
+        })
+      } else {
+        // 리뷰 모드에서 끝났으면 완료
+        alert('복습이 완료되었습니다!')
+        navigate('/chapters')
+      }
     }
+  }
+
+  if (isLoadingProgress) {
+    return (
+      <Empty>
+        <EmptyText>학습 상태를 불러오는 중...</EmptyText>
+      </Empty>
+    )
   }
 
   if (!currentHanja) {
@@ -167,13 +289,15 @@ const Study = () => {
           <BackButton onClick={() => navigate('/chapters')}>
             ← 뒤로
           </BackButton>
-          <ChapterTitle>{chapter}단원</ChapterTitle>
+          <ChapterTitle>
+            {isReviewMode ? `${chapter}단원 (복습)` : `${chapter}단원`}
+          </ChapterTitle>
           <Progress>
             <ProgressBar>
               <ProgressFill style={{ width: `${progressPercent}%` }} />
             </ProgressBar>
             <ProgressText>
-              {currentIndex + 1} / {chapterHanja.length}
+              {currentIndex + 1} / {studyList.length}
             </ProgressText>
           </Progress>
         </HeaderInner>

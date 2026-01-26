@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, func
-from models import HanjaModel
-from schemas import Hanja, Example
+from models import HanjaModel, StudyProgressModel
+from schemas import Hanja, Example, StudyProgress, StudyProgressResponse
 from typing import List, Optional
 
 
@@ -137,5 +137,109 @@ def delete_hanja(db: Session, hanja_id: str) -> bool:
         return False
     
     db.delete(hanja_model)
+    db.commit()
+    return True
+
+
+# 학습 진행 상태 CRUD 함수들
+def get_study_progress(db: Session, user_id: str, hanja_id: str) -> Optional[StudyProgressResponse]:
+    """특정 사용자의 특정 한자 학습 상태를 가져옵니다."""
+    stmt = select(StudyProgressModel).where(
+        StudyProgressModel.user_id == user_id,
+        StudyProgressModel.hanja_id == hanja_id
+    )
+    progress_model = db.execute(stmt).scalar_one_or_none()
+    
+    if not progress_model:
+        return None
+    
+    return StudyProgressResponse(
+        user_id=progress_model.user_id,
+        hanja_id=progress_model.hanja_id,
+        chapter=progress_model.chapter,
+        is_known=progress_model.is_known
+    )
+
+
+def get_study_progress_by_chapter(db: Session, user_id: str, chapter: int) -> List[StudyProgressResponse]:
+    """특정 사용자의 특정 단원 학습 상태를 가져옵니다."""
+    stmt = select(StudyProgressModel).where(
+        StudyProgressModel.user_id == user_id,
+        StudyProgressModel.chapter == chapter
+    )
+    progress_list = db.execute(stmt).scalars().all()
+    
+    return [
+        StudyProgressResponse(
+            user_id=p.user_id,
+            hanja_id=p.hanja_id,
+            chapter=p.chapter,
+            is_known=p.is_known
+        )
+        for p in progress_list
+    ]
+
+
+def get_all_study_progress(db: Session, user_id: str) -> List[StudyProgressResponse]:
+    """특정 사용자의 모든 학습 상태를 가져옵니다."""
+    stmt = select(StudyProgressModel).where(StudyProgressModel.user_id == user_id)
+    progress_list = db.execute(stmt).scalars().all()
+    
+    return [
+        StudyProgressResponse(
+            user_id=p.user_id,
+            hanja_id=p.hanja_id,
+            chapter=p.chapter,
+            is_known=p.is_known
+        )
+        for p in progress_list
+    ]
+
+
+def upsert_study_progress(db: Session, progress_data: dict) -> StudyProgressResponse:
+    """학습 진행 상태를 저장하거나 업데이트합니다 (upsert)."""
+    stmt = select(StudyProgressModel).where(
+        StudyProgressModel.user_id == progress_data["user_id"],
+        StudyProgressModel.hanja_id == progress_data["hanja_id"]
+    )
+    progress_model = db.execute(stmt).scalar_one_or_none()
+    
+    if progress_model:
+        # 기존 레코드 업데이트
+        progress_model.is_known = progress_data["is_known"]
+        progress_model.chapter = progress_data["chapter"]
+    else:
+        # 새 레코드 생성
+        progress_model = StudyProgressModel(
+            user_id=progress_data["user_id"],
+            hanja_id=progress_data["hanja_id"],
+            chapter=progress_data["chapter"],
+            is_known=progress_data["is_known"]
+        )
+        db.add(progress_model)
+    
+    db.commit()
+    db.refresh(progress_model)
+    
+    return StudyProgressResponse(
+        user_id=progress_model.user_id,
+        hanja_id=progress_model.hanja_id,
+        chapter=progress_model.chapter,
+        is_known=progress_model.is_known
+    )
+
+
+def delete_study_progress(db: Session, user_id: str, hanja_id: str) -> bool:
+    """학습 진행 상태를 삭제합니다."""
+    stmt = select(StudyProgressModel).where(
+        StudyProgressModel.user_id == user_id,
+        StudyProgressModel.hanja_id == hanja_id
+    )
+    progress_model = db.execute(stmt).scalar_one_or_none()
+    
+    if not progress_model:
+        return False
+    
+    db.delete(progress_model)
     db.commit()
     return True

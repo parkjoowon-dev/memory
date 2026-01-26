@@ -6,9 +6,14 @@ from sqlalchemy.orm import Session
 from database import get_db, engine, Base
 from crud import (
     get_all_hanja, get_hanja_by_id, get_hanja_by_chapter,
-    create_hanja, update_hanja, delete_hanja
+    create_hanja, update_hanja, delete_hanja,
+    get_study_progress, get_study_progress_by_chapter, get_all_study_progress,
+    upsert_study_progress, delete_study_progress
 )
-from schemas import HanjaListResponse, Hanja, HanjaCreate, HanjaUpdate
+from schemas import (
+    HanjaListResponse, Hanja, HanjaCreate, HanjaUpdate,
+    StudyProgress, StudyProgressCreate, StudyProgressResponse, StudyProgressListResponse
+)
 from typing import List, Optional
 import os
 
@@ -109,6 +114,88 @@ async def delete_hanja_endpoint(hanja_id: str, db: Session = Depends(get_db)):
     success = delete_hanja(db, hanja_id)
     if not success:
         raise HTTPException(status_code=404, detail="한자를 찾을 수 없습니다.")
+    return None
+
+
+# 학습 진행 상태 API 엔드포인트
+@app.get("/api/study-progress/{user_id}", response_model=StudyProgressListResponse)
+async def get_all_study_progress_endpoint(user_id: str, db: Session = Depends(get_db)):
+    """특정 사용자의 모든 학습 진행 상태를 반환합니다."""
+    progress_list = get_all_study_progress(db, user_id)
+    return {"progress": progress_list}
+
+
+@app.get("/api/study-progress/{user_id}/chapter/{chapter}", response_model=StudyProgressListResponse)
+async def get_study_progress_by_chapter_endpoint(
+    user_id: str, 
+    chapter: int, 
+    db: Session = Depends(get_db)
+):
+    """특정 사용자의 특정 단원 학습 진행 상태를 반환합니다."""
+    progress_list = get_study_progress_by_chapter(db, user_id, chapter)
+    return {"progress": progress_list}
+
+
+@app.get("/api/study-progress/{user_id}/hanja/{hanja_id}", response_model=StudyProgressResponse)
+async def get_study_progress_endpoint(
+    user_id: str, 
+    hanja_id: str, 
+    db: Session = Depends(get_db)
+):
+    """특정 사용자의 특정 한자 학습 진행 상태를 반환합니다."""
+    progress = get_study_progress(db, user_id, hanja_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="학습 진행 상태를 찾을 수 없습니다.")
+    return progress
+
+
+@app.post("/api/study-progress", response_model=StudyProgressResponse, status_code=201)
+async def create_study_progress_endpoint(
+    progress: StudyProgressCreate, 
+    db: Session = Depends(get_db)
+):
+    """학습 진행 상태를 저장하거나 업데이트합니다."""
+    progress_data = {
+        "user_id": progress.user_id,
+        "hanja_id": progress.hanja_id,
+        "chapter": progress.chapter,
+        "is_known": progress.is_known
+    }
+    created = upsert_study_progress(db, progress_data)
+    return created
+
+
+@app.put("/api/study-progress/{user_id}/hanja/{hanja_id}", response_model=StudyProgressResponse)
+async def update_study_progress_endpoint(
+    user_id: str,
+    hanja_id: str,
+    progress: StudyProgressCreate,
+    db: Session = Depends(get_db)
+):
+    """학습 진행 상태를 업데이트합니다."""
+    if progress.user_id != user_id or progress.hanja_id != hanja_id:
+        raise HTTPException(status_code=400, detail="URL과 요청 본문의 user_id 또는 hanja_id가 일치하지 않습니다.")
+    
+    progress_data = {
+        "user_id": progress.user_id,
+        "hanja_id": progress.hanja_id,
+        "chapter": progress.chapter,
+        "is_known": progress.is_known
+    }
+    updated = upsert_study_progress(db, progress_data)
+    return updated
+
+
+@app.delete("/api/study-progress/{user_id}/hanja/{hanja_id}", status_code=204)
+async def delete_study_progress_endpoint(
+    user_id: str, 
+    hanja_id: str, 
+    db: Session = Depends(get_db)
+):
+    """학습 진행 상태를 삭제합니다."""
+    success = delete_study_progress(db, user_id, hanja_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="학습 진행 상태를 찾을 수 없습니다.")
     return None
 
 # 정적 파일 서빙 설정 (Docker 빌드 시 static 폴더에 프론트엔드 빌드 결과가 있음)

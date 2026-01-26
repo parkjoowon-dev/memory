@@ -59,3 +59,32 @@ class HanjaUpdate(BaseModel):
     examples: Optional[List[Example]] = None
     chapter: Optional[int] = None
     difficulty: Optional[int] = None
+
+
+class StudyProgress(BaseModel):
+    """학습 진행 상태 스키마"""
+    user_id: str = "default"
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class StudyProgressCreate(BaseModel):
+    """학습 진행 상태 생성용 스키마"""
+    user_id: str = "default"
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class StudyProgressResponse(BaseModel):
+    """학습 진행 상태 응답 스키마"""
+    user_id: str
+    hanja_id: str
+    chapter: int
+    is_known: bool
+
+
+class StudyProgressListResponse(BaseModel):
+    """학습 진행 상태 리스트 응답 스키마"""
+    progress: List[StudyProgressResponse]

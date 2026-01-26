@@ -78,3 +78,76 @@ export async function fetchHanjaByChapter(
 ): Promise<ApiResponse<{ hanja: Hanja[] }>> {
   return fetchApi<{ hanja: Hanja[] }>(`/api/hanja/chapter/${chapter}`)
 }
+
+// 학습 진행 상태 타입
+export interface StudyProgress {
+  user_id: string
+  hanja_id: string
+  chapter: number
+  is_known: boolean
+}
+
+export interface StudyProgressListResponse {
+  progress: StudyProgress[]
+}
+
+/**
+ * 특정 사용자의 모든 학습 진행 상태 가져오기
+ */
+export async function fetchAllStudyProgress(
+  userId: string = 'default'
+): Promise<ApiResponse<StudyProgressListResponse>> {
+  return fetchApi<StudyProgressListResponse>(`/api/study-progress/${userId}`)
+}
+
+/**
+ * 특정 사용자의 특정 단원 학습 진행 상태 가져오기
+ */
+export async function fetchStudyProgressByChapter(
+  userId: string = 'default',
+  chapter: number
+): Promise<ApiResponse<StudyProgressListResponse>> {
+  return fetchApi<StudyProgressListResponse>(`/api/study-progress/${userId}/chapter/${chapter}`)
+}
+
+/**
+ * 특정 사용자의 특정 한자 학습 진행 상태 가져오기
+ */
+export async function fetchStudyProgress(
+  userId: string = 'default',
+  hanjaId: string
+): Promise<ApiResponse<StudyProgress>> {
+  return fetchApi<StudyProgress>(`/api/study-progress/${userId}/hanja/${hanjaId}`)
+}
+
+/**
+ * 학습 진행 상태 저장/업데이트
+ */
+export async function saveStudyProgress(
+  progress: StudyProgress
+): Promise<ApiResponse<StudyProgress>> {
+  const API_BASE_URL = getApiBaseUrl()
+  const url = API_BASE_URL ? `${API_BASE_URL}/api/study-progress` : '/api/study-progress'
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(progress),
+    })
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return { data }
+  } catch (error) {
+    console.error('API 호출 오류:', error)
+    return {
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+    }
+  }
+}
