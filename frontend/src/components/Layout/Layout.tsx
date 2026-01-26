@@ -29,7 +29,7 @@ const Main = styled.main<{ $full: boolean }>`
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
-  const isFullWidthPage = location.pathname.startsWith('/study')
+  const isFullWidthPage = location.pathname.startsWith('/study') || location.pathname.startsWith('/quiz')
 
   return (
     <Root>

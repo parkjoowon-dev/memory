@@ -250,9 +250,29 @@ const Study = () => {
           return finalUnknownIds
         })
       } else {
-        // 리뷰 모드에서 끝났으면 완료
-        alert('복습이 완료되었습니다!')
-        navigate('/chapters')
+        // 리뷰 모드에서 끝났을 때, 모르는 한자가 있는지 확인
+        // 함수형 업데이트로 최신 값 확인
+        setUnknownHanjaIds((prev) => {
+          const finalUnknownIds = result === 'unknown' && !prev.includes(currentHanja.id)
+            ? [...prev, currentHanja.id]
+            : result === 'known'
+            ? prev.filter((id) => id !== currentHanja.id)
+            : prev
+          
+          // 다음 렌더링 사이클에서 다시 리뷰 모드로 전환 또는 완료 처리
+          setTimeout(() => {
+            if (finalUnknownIds.length > 0) {
+              // 모르는 한자가 있으면 다시 리뷰 모드로 전환 (처음부터 다시)
+              setCurrentIndex(0)
+            } else {
+              // 모든 한자를 알고 있으면 완료
+              alert('복습이 완료되었습니다!')
+              navigate('/chapters')
+            }
+          }, 100)
+          
+          return finalUnknownIds
+        })
       }
     }
   }
