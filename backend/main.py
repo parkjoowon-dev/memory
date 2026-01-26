@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db, engine, Base
-from crud import get_all_hanja, get_hanja_by_id, get_hanja_by_chapter
-from schemas import HanjaListResponse, Hanja
+from crud import (
+    get_all_hanja, get_hanja_by_id, get_hanja_by_chapter,
+    create_hanja, update_hanja, delete_hanja
+)
+from schemas import HanjaListResponse, Hanja, HanjaCreate, HanjaUpdate
 from typing import List, Optional
 import os
 
@@ -53,6 +56,60 @@ async def get_hanja_by_chapter_endpoint(chapter: int, db: Session = Depends(get_
     """특정 단원의 한자 데이터를 반환합니다."""
     hanja_list = get_hanja_by_chapter(db, chapter)
     return {"hanja": hanja_list}
+
+
+@app.post("/api/hanja", response_model=Hanja, status_code=201)
+async def create_hanja_endpoint(hanja: HanjaCreate, db: Session = Depends(get_db)):
+    """새 한자 데이터를 생성합니다."""
+    hanja_data = {
+        "character": hanja.character,
+        "sound": hanja.sound,
+        "meaning": hanja.meaning,
+        "strokeOrder": hanja.strokeOrder,
+        "examples": hanja.examples,
+        "chapter": hanja.chapter,
+        "difficulty": hanja.difficulty,
+    }
+    created = create_hanja(db, hanja_data)
+    return created
+
+
+@app.put("/api/hanja/{hanja_id}", response_model=Hanja)
+async def update_hanja_endpoint(
+    hanja_id: str, 
+    hanja: HanjaUpdate, 
+    db: Session = Depends(get_db)
+):
+    """한자 데이터를 수정합니다."""
+    hanja_data = {}
+    if hanja.character is not None:
+        hanja_data["character"] = hanja.character
+    if hanja.sound is not None:
+        hanja_data["sound"] = hanja.sound
+    if hanja.meaning is not None:
+        hanja_data["meaning"] = hanja.meaning
+    if hanja.strokeOrder is not None:
+        hanja_data["strokeOrder"] = hanja.strokeOrder
+    if hanja.examples is not None:
+        hanja_data["examples"] = hanja.examples
+    if hanja.chapter is not None:
+        hanja_data["chapter"] = hanja.chapter
+    if hanja.difficulty is not None:
+        hanja_data["difficulty"] = hanja.difficulty
+    
+    updated = update_hanja(db, hanja_id, hanja_data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="한자를 찾을 수 없습니다.")
+    return updated
+
+
+@app.delete("/api/hanja/{hanja_id}", status_code=204)
+async def delete_hanja_endpoint(hanja_id: str, db: Session = Depends(get_db)):
+    """한자 데이터를 삭제합니다."""
+    success = delete_hanja(db, hanja_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="한자를 찾을 수 없습니다.")
+    return None
 
 # 정적 파일 서빙 설정 (Docker 빌드 시 static 폴더에 프론트엔드 빌드 결과가 있음)
 static_dir = "static"

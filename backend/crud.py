@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select
+from sqlalchemy import select, func
 from models import HanjaModel
 from schemas import Hanja, Example
 from typing import List, Optional
@@ -54,7 +54,40 @@ def get_hanja_by_chapter(db: Session, chapter: int) -> List[Hanja]:
 
 def create_hanja(db: Session, hanja_data: dict) -> Hanja:
     """새 한자 데이터를 생성합니다 (ORM 사용)."""
-    hanja_model = HanjaModel(**hanja_data)
+    # ID가 없으면 자동 생성 (기존 최대 ID + 1)
+    if "id" not in hanja_data or not hanja_data.get("id"):
+        stmt = select(HanjaModel.id)
+        existing_ids = db.execute(stmt).scalars().all()
+        if existing_ids:
+            # 숫자 ID만 추출하여 최대값 찾기
+            numeric_ids = [int(id) for id in existing_ids if str(id).isdigit()]
+            new_id = str(max(numeric_ids) + 1) if numeric_ids else "1"
+        else:
+            new_id = "1"
+        hanja_data["id"] = new_id
+    
+    # examples를 dict 리스트로 변환
+    examples_data = hanja_data.get("examples", [])
+    if examples_data:
+        # Example 객체인 경우 dict로 변환
+        if isinstance(examples_data[0], Example):
+            examples_dict = [{"sentence": ex.sentence, "meaning": ex.meaning} for ex in examples_data]
+        else:
+            # 이미 dict인 경우
+            examples_dict = examples_data
+    else:
+        examples_dict = []
+    
+    hanja_model = HanjaModel(
+        id=hanja_data["id"],
+        character=hanja_data["character"],
+        sound=hanja_data["sound"],
+        meaning=hanja_data["meaning"],
+        stroke_order=hanja_data.get("strokeOrder", []),
+        examples=examples_dict,
+        chapter=hanja_data["chapter"],
+        difficulty=hanja_data.get("difficulty", 2)
+    )
     db.add(hanja_model)
     db.commit()
     db.refresh(hanja_model)
@@ -69,8 +102,26 @@ def update_hanja(db: Session, hanja_id: str, hanja_data: dict) -> Optional[Hanja
     if not hanja_model:
         return None
     
-    for key, value in hanja_data.items():
-        setattr(hanja_model, key, value)
+    # 업데이트할 필드만 적용
+    if "character" in hanja_data:
+        hanja_model.character = hanja_data["character"]
+    if "sound" in hanja_data:
+        hanja_model.sound = hanja_data["sound"]
+    if "meaning" in hanja_data:
+        hanja_model.meaning = hanja_data["meaning"]
+    if "strokeOrder" in hanja_data:
+        hanja_model.stroke_order = hanja_data["strokeOrder"]
+    if "examples" in hanja_data:
+        # Example 객체인 경우 dict로 변환
+        examples = hanja_data["examples"]
+        if examples and isinstance(examples[0], Example):
+            hanja_model.examples = [{"sentence": ex.sentence, "meaning": ex.meaning} for ex in examples]
+        else:
+            hanja_model.examples = examples
+    if "chapter" in hanja_data:
+        hanja_model.chapter = hanja_data["chapter"]
+    if "difficulty" in hanja_data:
+        hanja_model.difficulty = hanja_data["difficulty"]
     
     db.commit()
     db.refresh(hanja_model)

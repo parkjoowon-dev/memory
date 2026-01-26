@@ -9,6 +9,7 @@ import Game from './pages/Game/Game'
 import Exam from './pages/Exam/Exam'
 import Statistics from './pages/Statistics/Statistics'
 import WrongAnswers from './pages/WrongAnswers/WrongAnswers'
+import Admin from './pages/Admin/Admin'
 import { useStore } from './store/useStore'
 import { sampleHanja } from './data/sampleHanja'
 
@@ -58,6 +59,7 @@ function App() {
           <Route path="/exam" element={<Exam />} />
           <Route path="/statistics" element={<Statistics />} />
           <Route path="/wrong-answers" element={<WrongAnswers />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </Layout>
     </Router>
