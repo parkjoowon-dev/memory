@@ -70,7 +70,7 @@ const Main = styled.div`
 
 const Character = styled.div`
   font-family: 'Noto Sans CJK KR', 'Malgun Gothic', sans-serif;
-  font-size: clamp(10rem, 24vw, 20rem);
+  font-size: clamp(8rem, 20vw, 18rem);
   font-weight: 800;
   line-height: 1;
   margin-bottom: 1rem;
@@ -87,31 +87,34 @@ const Info = styled(motion.div)`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 0 2rem;
+  gap: 1rem;
+  padding: 0 1.5rem;
   box-sizing: border-box;
 `
 
 const InfoRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding-bottom: 1rem;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid #e0e0e0;
+  flex-wrap: wrap;
 `
 
 const InfoLabel = styled.span`
   font-weight: 600;
   color: #666;
-  min-width: 60px;
-  font-size: 0.95rem;
+  min-width: 50px;
+  font-size: 0.85rem;
 `
 
 const InfoValue = styled.span`
-  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-size: clamp(1.8rem, 4.5vw, 2.5rem);
   font-weight: 500;
   color: #1a1a1a;
   flex: 1;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 `
 
 const Examples = styled.div`
@@ -130,13 +133,15 @@ const ExampleItem = styled.div`
 `
 
 const ExampleSentence = styled.span`
-  font-size: clamp(2.4rem, 4.5vw, 2.4rem);
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
   font-weight: 500;
   color: #1a1a1a;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 `
 
 const ExampleMeaning = styled.span`
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   color: #666;
 `
 
@@ -153,25 +158,34 @@ const SwipeGuide = styled.div`
 
 const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   const [showInfo, setShowInfo] = useState(false)
-  const [isVisible, setIsVisible] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
   const controls = useAnimation()
 
   useEffect(() => {
+    // 마운트 상태 설정 (클라이언트 사이드에서만 실행)
+    setIsMounted(true)
     setShowInfo(false)
-    setIsVisible(true)
     
     // 카드 초기화 - 명시적으로 opacity를 1로 설정
-    controls.start({ 
-      y: 0, 
-      opacity: 1, 
-      scale: 1,
-      transition: { duration: 0.3 }
-    })
+    // 서버 환경에서도 확실하게 적용되도록 즉시 실행
+    const initAnimation = async () => {
+      await controls.set({ y: 0, opacity: 1, scale: 1 })
+      // 약간의 지연 후 애니메이션 시작 (서버 환경 대응)
+      await controls.start({ 
+        y: 0, 
+        opacity: 1, 
+        scale: 1,
+        transition: { duration: 0.2 }
+      })
+    }
+    initAnimation()
     
     const timer = setTimeout(() => {
       setShowInfo(true)
     }, 2500)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [hanja, controls])
 
   const handleDragEnd = async (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -181,21 +195,37 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     if (info.offset.y < -threshold || velocity < -500) {
       // 위로 스와이프 (알고 있음)
       await controls.start({ y: -500, opacity: 0, transition: { duration: 0.2 } })
-      setIsVisible(false)
       onSwipe('known')
     } else if (info.offset.y > threshold || velocity > 500) {
       // 아래로 스와이프 (모름)
       await controls.start({ y: 500, opacity: 0, transition: { duration: 0.2 } })
-      setIsVisible(false)
       onSwipe('unknown')
     } else {
       // 제자리로 복귀 - opacity도 명시적으로 1로 설정
-      controls.start({ 
+      // 서버 환경에서도 확실하게 적용되도록 await 사용
+      await controls.start({ 
         y: 0, 
         opacity: 1,
         transition: { type: 'spring', stiffness: 300, damping: 20 } 
       })
     }
+  }
+
+  // 마운트되지 않았으면 빈 div 반환 (SSR 대응)
+  if (!isMounted) {
+    return (
+      <Container>
+        <Card
+          style={{ opacity: 1 }}
+          initial={false}
+          animate={false}
+        >
+          <Main>
+            <Character>{hanja.character}</Character>
+          </Main>
+        </Card>
+      </Container>
+    )
   }
 
   return (
@@ -207,7 +237,6 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
         animate={controls}
         initial={{ opacity: 1, scale: 1, y: 0 }}
         whileDrag={{ cursor: 'grabbing' }}
-        style={{ opacity: isVisible ? undefined : 0 }}
       >
         <Main>
           <Character>{hanja.character}</Character>
