@@ -5,6 +5,16 @@ import { Hanja } from '../../types/hanja'
 import styled from 'styled-components'
 import HanjaForm from './HanjaForm'
 
+// API 기본 URL 가져오기 함수 (api.ts와 동일한 로직)
+const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  // 로컬 개발 환경이면 백엔드 서버 주소 사용
+  const isDev = import.meta.env.DEV
+  return isDev ? 'http://localhost:8000' : ''
+}
+
 const Container = styled.div`
   padding: 2rem;
   max-width: 1200px;
@@ -164,9 +174,10 @@ const Admin = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return
 
-    const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || ''
+    const API_BASE_URL = getApiBaseUrl()
     try {
-      const response = await fetch(`${API_BASE_URL}/api/hanja/${id}`, {
+      const url = API_BASE_URL ? `${API_BASE_URL}/api/hanja/${id}` : `/api/hanja/${id}`
+      const response = await fetch(url, {
         method: 'DELETE',
       })
 

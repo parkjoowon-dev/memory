@@ -63,7 +63,6 @@ const Navigation = () => {
     { path: '/quiz', label: '연습', icon: '✏️' },
     { path: '/exam', label: '시험', icon: '📝' },
     { path: '/statistics', label: '통계', icon: '📊' },
-    { path: '/admin', label: '관리', icon: '⚙️' },
   ]
 
   return (

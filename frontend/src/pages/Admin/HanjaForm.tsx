@@ -149,17 +149,24 @@ const Button = styled.button<{ $primary?: boolean }>`
 `
 
 const HanjaForm = ({ initialData, editingId, onClose, onSuccess }: HanjaFormProps) => {
+  // 로컬 스토리지에서 마지막으로 입력한 단원 가져오기
+  const getLastChapter = (): number => {
+    const lastChapter = localStorage.getItem('hanja_last_chapter')
+    return lastChapter ? parseInt(lastChapter, 10) : 1
+  }
+
   const [formData, setFormData] = useState({
     character: '',
     sound: '',
     meaning: '',
-    chapter: 1,
+    chapter: getLastChapter(),
     difficulty: 2,
     examples: [] as Array<{ sentence: string; meaning: string }>,
   })
 
   useEffect(() => {
     if (initialData) {
+      // 수정 모드: 초기 데이터 사용
       setFormData({
         character: initialData.character,
         sound: initialData.sound,
@@ -171,16 +178,31 @@ const HanjaForm = ({ initialData, editingId, onClose, onSuccess }: HanjaFormProp
           meaning: ex.meaning,
         })),
       })
+    } else {
+      // 새로 등록 모드: 로컬 스토리지에서 마지막 단원 가져오기
+      const lastChapter = getLastChapter()
+      setFormData((prev) => ({
+        ...prev,
+        chapter: lastChapter,
+      }))
     }
   }, [initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || ''
-    const url = editingId
-      ? `${API_BASE_URL}/api/hanja/${editingId}`
-      : `${API_BASE_URL}/api/hanja`
+    // API 기본 URL 가져오기 (로컬 개발: localhost:8000, 프로덕션: 상대 경로)
+    const getApiBaseUrl = (): string => {
+      if (import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL
+      }
+      const isDev = import.meta.env.DEV
+      return isDev ? 'http://localhost:8000' : ''
+    }
+    
+    const API_BASE_URL = getApiBaseUrl()
+    const basePath = API_BASE_URL ? `${API_BASE_URL}/api/hanja` : '/api/hanja'
+    const url = editingId ? `${basePath}/${editingId}` : basePath
 
     try {
       const response = await fetch(url, {
@@ -192,6 +214,8 @@ const HanjaForm = ({ initialData, editingId, onClose, onSuccess }: HanjaFormProp
       })
 
       if (response.ok) {
+        // 등록/수정 성공 시 단원을 로컬 스토리지에 저장
+        localStorage.setItem('hanja_last_chapter', formData.chapter.toString())
         alert(editingId ? '수정되었습니다.' : '등록되었습니다.')
         onSuccess()
       } else {
@@ -245,21 +269,21 @@ const HanjaForm = ({ initialData, editingId, onClose, onSuccess }: HanjaFormProp
           </FormGroup>
 
           <FormGroup>
-            <Label>음 *</Label>
-            <Input
-              type="text"
-              value={formData.sound}
-              onChange={(e) => setFormData({ ...formData, sound: e.target.value })}
-              required
-            />
-          </FormGroup>
-
-          <FormGroup>
             <Label>뜻 *</Label>
             <Input
               type="text"
               value={formData.meaning}
               onChange={(e) => setFormData({ ...formData, meaning: e.target.value })}
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>음 *</Label>
+            <Input
+              type="text"
+              value={formData.sound}
+              onChange={(e) => setFormData({ ...formData, sound: e.target.value })}
               required
             />
           </FormGroup>
