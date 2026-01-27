@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { motion, useAnimation, PanInfo } from 'framer-motion'
 import styled from 'styled-components'
 import { Hanja } from '../../types/hanja'
@@ -168,40 +168,37 @@ const SwipeGuide = styled.div`
 const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   const [showInfo, setShowInfo] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [isReady, setIsReady] = useState(false) // 카드가 준비되었는지 여부
   const controls = useAnimation()
+  
+  // hanja.id가 변경되면 컴포넌트가 재생성되므로 별도 state 불필요
+  // key prop으로 React가 완전히 새로운 컴포넌트로 인식하도록 함
 
+  // useLayoutEffect로 동기적으로 처리하여 이전 카드가 보이지 않도록
+  useLayoutEffect(() => {
+    // hanja가 변경되면 즉시 내용을 숨기기 (렌더링 전에 실행)
+    setShowInfo(false)
+    
+    // 카드 초기화 - 명시적으로 opacity와 y를 리셋
+    // 이전 스와이프 상태가 남아있을 수 있으므로 강제로 리셋
+    // 카드는 즉시 보이도록 설정 (opacity: 1)
+    controls.set({ y: 0, opacity: 1, scale: 1 })
+  }, [hanja.id, controls])
+  
   useEffect(() => {
     // 마운트 상태 설정 (클라이언트 사이드에서만 실행)
     setIsMounted(true)
     
-    // hanja가 변경되면 즉시 내용을 숨기고 준비 상태를 리셋
-    setShowInfo(false)
-    setIsReady(false)
+    // 카드 애니메이션 시작 (즉시)
+    controls.start({ 
+      y: 0, 
+      opacity: 1, 
+      scale: 1,
+      transition: { duration: 0.2 }
+    }).catch(() => {
+      // 에러 무시 (컴포넌트가 언마운트된 경우)
+    })
     
-    // 카드 초기화 - 명시적으로 opacity와 y를 리셋
-    // 이전 스와이프 상태가 남아있을 수 있으므로 강제로 리셋
-    // 즉시 상태를 리셋 (애니메이션 없이) - 동기적으로 실행
-    controls.set({ y: 0, opacity: 0, scale: 1 })
-    
-    // 짧은 지연 후 카드를 표시하고 애니메이션 시작
-    const readyTimeout = setTimeout(() => {
-      setIsReady(true)
-      controls.set({ y: 0, opacity: 1, scale: 1 })
-      
-      // 카드가 준비된 후 애니메이션 시작
-      setTimeout(() => {
-        controls.start({ 
-          y: 0, 
-          opacity: 1, 
-          scale: 1,
-          transition: { duration: 0.2 }
-        }).catch(() => {
-          // 에러 무시 (컴포넌트가 언마운트된 경우)
-        })
-      }, 10)
-    }, 50)
-    
+    // 음과 뜻은 2.5초 후에 표시
     const timer = setTimeout(() => {
       setShowInfo(true)
     }, 2500)
@@ -209,12 +206,10 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     // cleanup 함수: hanja가 변경될 때 타이머와 상태 리셋
     return () => {
       clearTimeout(timer)
-      clearTimeout(readyTimeout)
       setShowInfo(false)
-      setIsReady(false)
       // cleanup 시에도 상태를 리셋
       try {
-        controls.set({ y: 0, opacity: 0, scale: 1 })
+        controls.set({ y: 0, opacity: 1, scale: 1 })
       } catch {
         // 에러 무시
       }
@@ -255,18 +250,17 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     }
   }
 
-  // 마운트되지 않았거나 준비되지 않았으면 빈 div 반환 (이전 카드가 보이지 않도록)
-  if (!isMounted || !isReady) {
+  // 마운트되지 않았으면 빈 div 반환
+  if (!isMounted) {
     return (
       <Container>
         <Card
-          style={{ opacity: 0, visibility: 'hidden', pointerEvents: 'none' }}
+          style={{ opacity: 0, visibility: 'hidden' }}
           initial={false}
           animate={false}
         >
           <Main>
-            {/* 빈 Character - 이전 한자가 보이지 않도록 */}
-            <Character style={{ visibility: 'hidden' }}></Character>
+            <Character></Character>
           </Main>
         </Card>
       </Container>
@@ -276,7 +270,6 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   return (
     <Container>
       <Card
-        key={`card-${hanja.id}`}
         drag="y"
         dragElastic={0.7}
         onDragEnd={handleDragEnd}

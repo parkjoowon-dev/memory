@@ -162,7 +162,6 @@ const StudyMode = () => {
   const [isReviewMode, setIsReviewMode] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoadingProgress, setIsLoadingProgress] = useState(true)
-  const [seenHanjaIds, setSeenHanjaIds] = useState<Set<string>>(new Set()) // 연습 모드에서 이미 본 한자 추적
   
   // knownHanjaIds를 사용하여 리뷰 모드에서 제외할 한자 확인 (TypeScript 경고 방지)
   void knownHanjaIds
@@ -284,11 +283,8 @@ const StudyMode = () => {
         }
       }
       
-      // 이미 본 한자는 제외 (연습 모드만)
-      const unseenFiltered = filtered.filter((h) => !seenHanjaIds.has(h.id))
-      
-      // 랜덤으로 섞기
-      return shuffleArray(unseenFiltered)
+      // 랜덤으로 섞기 (인덱스 기반으로 사용하기 위해 미리 섞기)
+      return shuffleArray(filtered)
     } else {
       // 학습 모드
       if (!chapter) return []
@@ -303,58 +299,33 @@ const StudyMode = () => {
         return allChapterHanja
       }
     }
-  }, [hanjaList, chapter, isChapterMode, knownHanjaIds, unknownHanjaIds, seenHanjaIds, isReviewMode, isPracticeMode])
+  }, [hanjaList, chapter, isChapterMode, knownHanjaIds, unknownHanjaIds, isReviewMode, isPracticeMode])
   
-  // studyList가 변경되면 currentIndex 조정 (학습 모드만)
+  // studyList가 변경되면 currentIndex 조정
   useEffect(() => {
-    if (!isPracticeMode && hanjaList_filtered.length > 0) {
+    if (hanjaList_filtered.length > 0) {
       if (currentIndex >= hanjaList_filtered.length) {
         setCurrentIndex(0)
       }
-    } else if (!isPracticeMode && hanjaList_filtered.length === 0 && isReviewMode) {
-      alert('복습이 완료되었습니다!')
-      navigate('/chapters')
+    } else if (hanjaList_filtered.length === 0 && isReviewMode) {
+      // 리뷰 모드에서 모든 한자를 알고 있으면 완료
+      alert(isPracticeMode ? '복습이 완료되었습니다!' : '복습이 완료되었습니다!')
+      navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
     }
-  }, [hanjaList_filtered.length, currentIndex, isReviewMode, navigate, isPracticeMode])
+  }, [hanjaList_filtered.length, currentIndex, isReviewMode, navigate, isPracticeMode, isChapterMode])
   
-  // 현재 한자
-  const currentHanja = isPracticeMode 
-    ? hanjaList_filtered[0] // 연습 모드: 항상 첫 번째
-    : hanjaList_filtered[currentIndex] // 학습 모드: 인덱스 기반
+  // 현재 한자 (인덱스 기반으로 통일)
+  const currentHanja = hanjaList_filtered[currentIndex]
   
-  // 진행률 계산
-  const totalHanjaCount = useMemo(() => {
-    if (isPracticeMode) {
-      if (isReviewMode) {
-        return unknownHanjaIds.length
-      } else {
-        if (isChapterMode && chapter) {
-          return hanjaList.filter((h) => h.chapter === chapter).length
-        } else {
-          const studiedIds = new Set([...knownHanjaIds, ...unknownHanjaIds])
-          return hanjaList.filter((h) => studiedIds.has(h.id)).length
-        }
-      }
-    } else {
-      return hanjaList_filtered.length
-    }
-  }, [hanjaList, chapter, isChapterMode, knownHanjaIds, unknownHanjaIds, isReviewMode, isPracticeMode, hanjaList_filtered.length])
-  
-  const progressPercent = totalHanjaCount > 0 
-    ? (isPracticeMode 
-      ? (seenHanjaIds.size / totalHanjaCount) * 100 
-      : ((currentIndex + 1) / totalHanjaCount) * 100)
+  // 진행률 계산 (인덱스 기반으로 통일)
+  const progressPercent = hanjaList_filtered.length > 0 
+    ? ((currentIndex + 1) / hanjaList_filtered.length) * 100 
     : 0
 
   const handleSwipe = async (result: 'known' | 'unknown') => {
     if (!currentHanja) return
     
     const isKnown = result === 'known'
-    
-    // 연습 모드: 이미 본 한자로 표시
-    if (isPracticeMode) {
-      setSeenHanjaIds((prev) => new Set(prev).add(currentHanja.id))
-    }
     
     // DB에 진행 상태 저장
     try {
@@ -409,97 +380,59 @@ const StudyMode = () => {
       })
     }
     
-    // 다음 한자로 이동
-    if (isPracticeMode) {
-      // 연습 모드: quizHanjaList가 업데이트되면 자동으로 다음 한자가 표시됨
+    // 다음 한자로 이동 (인덱스 기반으로 통일)
+    if (currentIndex < hanjaList_filtered.length - 1) {
+      // 다음 한자로 이동
+      setCurrentIndex(prev => prev + 1)
     } else {
-      // 학습 모드: 인덱스 기반
-      if (currentIndex < hanjaList_filtered.length - 1) {
-        setCurrentIndex(prev => prev + 1)
-      } else {
-        // 모든 한자를 다 봤을 때
-        if (!isReviewMode) {
-          // 일반 모드에서 끝났을 때
-          if (result === 'unknown') {
-            const progressData = await loadProgress()
-            if (progressData && progressData.unknownIds.length > 0) {
-              setIsReviewMode(true)
-              setCurrentIndex(0)
-            } else {
-              alert('학습이 완료되었습니다!')
-              navigate('/chapters')
-            }
+      // 모든 한자를 다 봤을 때
+      if (!isReviewMode) {
+        // 일반 모드에서 끝났을 때
+        if (result === 'unknown') {
+          const progressData = await loadProgress()
+          if (progressData && progressData.unknownIds.length > 0) {
+            setIsReviewMode(true)
+            setCurrentIndex(0)
           } else {
-            const progressData = await loadProgress()
-            if (progressData) {
-              if (progressData.unknownIds.length === 0) {
-                alert('학습이 완료되었습니다!')
-                navigate('/chapters')
-              } else {
-                setIsReviewMode(true)
-                setCurrentIndex(0)
-              }
-            }
+            alert(isPracticeMode ? '연습이 완료되었습니다!' : '학습이 완료되었습니다!')
+            navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
           }
         } else {
-          // 리뷰 모드에서 끝났을 때
-          if (result === 'unknown') {
-            const progressData = await loadProgress()
-            if (progressData && progressData.unknownIds.length > 0) {
-              setCurrentIndex(0)
+          const progressData = await loadProgress()
+          if (progressData) {
+            if (progressData.unknownIds.length === 0) {
+              alert(isPracticeMode ? '연습이 완료되었습니다!' : '학습이 완료되었습니다!')
+              navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
             } else {
-              alert('복습이 완료되었습니다!')
-              navigate('/chapters')
-            }
-          } else {
-            const progressData = await loadProgress()
-            if (progressData) {
-              if (progressData.unknownIds.length === 0) {
-                alert('복습이 완료되었습니다!')
-                navigate('/chapters')
-              } else {
-                setCurrentIndex(0)
-              }
+              setIsReviewMode(true)
+              setCurrentIndex(0)
             }
           }
         }
-      }
-    }
-  }
-  
-  // 연습 모드: 모든 한자를 다 봤는지 확인 및 복습 모드 전환
-  useEffect(() => {
-    if (isPracticeMode && hanjaList_filtered.length === 0 && seenHanjaIds.size > 0 && !isLoadingProgress) {
-      const handleCompletion = async () => {
-        if (!isReviewMode) {
+      } else {
+        // 리뷰 모드에서 끝났을 때
+        if (result === 'unknown') {
           const progressData = await loadProgress()
-          if (progressData) {
-            if (progressData.unknownIds.length > 0) {
-              setSeenHanjaIds(new Set())
-              setIsReviewMode(true)
-            } else {
-              alert('연습이 완료되었습니다!')
-              navigate(isChapterMode ? '/chapters' : '/quiz')
-            }
+          if (progressData && progressData.unknownIds.length > 0) {
+            setCurrentIndex(0)
+          } else {
+            alert('복습이 완료되었습니다!')
+            navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
           }
         } else {
           const progressData = await loadProgress()
           if (progressData) {
             if (progressData.unknownIds.length === 0) {
               alert('복습이 완료되었습니다!')
-              navigate(isChapterMode ? '/chapters' : '/quiz')
+              navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
             } else {
-              setSeenHanjaIds(new Set())
+              setCurrentIndex(0)
             }
           }
         }
       }
-      
-      setTimeout(() => {
-        handleCompletion()
-      }, 100)
     }
-  }, [hanjaList_filtered.length, seenHanjaIds.size, isLoadingProgress, isChapterMode, navigate, isReviewMode, isPracticeMode, loadProgress])
+  }
 
   if (isLoadingProgress) {
     return (
@@ -548,20 +481,14 @@ const StudyMode = () => {
   }
 
   const getProgressText = () => {
-    if (isPracticeMode) {
-      return `${seenHanjaIds.size} / ${totalHanjaCount}`
-    } else {
-      return `${currentIndex + 1} / ${hanjaList_filtered.length}`
-    }
+    return `${currentIndex + 1} / ${hanjaList_filtered.length}`
   }
 
   return (
     <Screen>
       <Content>
         <HanjaCard
-          key={isPracticeMode 
-            ? `practice-${currentHanja.id}-${seenHanjaIds.size}-${Date.now()}`
-            : `study-${currentHanja.id}-${currentIndex}-${isReviewMode ? 'review' : 'normal'}-${Date.now()}`}
+          key={`${isPracticeMode ? 'practice' : 'study'}-${currentHanja.id}-${currentIndex}-${isReviewMode ? 'review' : 'normal'}`}
           hanja={currentHanja}
           onSwipe={handleSwipe}
         />
