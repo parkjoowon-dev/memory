@@ -10,7 +10,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  /* 폰트를 전역적으로 로드하여 캐싱 보장 */
+  font-family: var(--hanja-font-family), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -35,4 +36,3 @@ body {
   font-family: var(--hanja-font-family);
   font-weight: 500;
 }
-

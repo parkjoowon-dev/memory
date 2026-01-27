@@ -77,7 +77,8 @@ const Character = styled.div`
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-display: swap;
+  /* 폰트가 이미 로드되어 있도록 보장 (브라우저 캐시 활용) */
+  text-rendering: optimizeLegibility;
 `
 
 const Hint = styled.p`
