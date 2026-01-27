@@ -260,12 +260,13 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     return (
       <Container>
         <Card
-          style={{ opacity: 0, visibility: 'hidden' }}
+          style={{ opacity: 0, visibility: 'hidden', pointerEvents: 'none' }}
           initial={false}
           animate={false}
         >
           <Main>
-            <Character></Character>
+            {/* 빈 Character - 이전 한자가 보이지 않도록 */}
+            <Character style={{ visibility: 'hidden' }}></Character>
           </Main>
         </Card>
       </Container>

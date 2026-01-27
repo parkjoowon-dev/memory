@@ -560,8 +560,8 @@ const StudyMode = () => {
       <Content>
         <HanjaCard
           key={isPracticeMode 
-            ? `${currentHanja.id}-${seenHanjaIds.size}-${isChapterMode ? `chapter-${chapter}` : 'all'}`
-            : `${currentHanja.id}-${currentIndex}-${isReviewMode ? 'review' : 'normal'}`}
+            ? `practice-${currentHanja.id}-${seenHanjaIds.size}-${Date.now()}`
+            : `study-${currentHanja.id}-${currentIndex}-${isReviewMode ? 'review' : 'normal'}-${Date.now()}`}
           hanja={currentHanja}
           onSwipe={handleSwipe}
         />
