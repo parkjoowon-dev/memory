@@ -108,7 +108,7 @@ const ChapterSelection = () => {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  navigate(`/quiz/chapter/${chapter.id}`)
+                  navigate(`/quiz/chapter/${chapter.id}?mode=practice`)
                 }}
                 style={{
                   flex: 1,

@@ -201,7 +201,7 @@ const Home = () => {
             <span className="button-icon">📚</span>
             <span className="button-text">학습 시작하기</span>
           </Link>
-          <Link to="/quiz" className="action-button">
+          <Link to="/quiz?mode=practice" className="action-button">
             <span className="button-icon">✏️</span>
             <span className="button-text">퀴즈 풀기</span>
           </Link>

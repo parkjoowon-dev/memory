@@ -3,8 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import Home from './pages/Home/Home'
 import ChapterSelection from './pages/ChapterSelection/ChapterSelection'
-import Study from './pages/Study/Study'
-import Quiz from './pages/Quiz/Quiz'
+import StudyMode from './pages/StudyMode/StudyMode'
 import Game from './pages/Game/Game'
 import Exam from './pages/Exam/Exam'
 import Statistics from './pages/Statistics/Statistics'
@@ -53,9 +52,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/chapters" element={<ChapterSelection />} />
-          <Route path="/study/:chapterId" element={<Study />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/quiz/chapter/:chapterId" element={<Quiz />} />
+          <Route path="/study/:chapterId" element={<StudyMode />} />
+          <Route path="/quiz" element={<StudyMode />} />
+          <Route path="/quiz/chapter/:chapterId" element={<StudyMode />} />
           <Route path="/game" element={<Game />} />
           <Route path="/exam" element={<Exam />} />
           <Route path="/statistics" element={<Statistics />} />
