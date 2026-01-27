@@ -156,15 +156,14 @@ const StudyMode = () => {
   const chapter = chapterId ? parseInt(chapterId) : null
   const isChapterMode = chapter !== null
   
-  // 학습 상태 관리
+  // 학습 / 연습 상태 관리
   const [knownHanjaIds, setKnownHanjaIds] = useState<Set<string>>(new Set())
   const [unknownHanjaIds, setUnknownHanjaIds] = useState<string[]>([])
   const [isReviewMode, setIsReviewMode] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoadingProgress, setIsLoadingProgress] = useState(true)
-  
-  // knownHanjaIds를 사용하여 리뷰 모드에서 제외할 한자 확인 (TypeScript 경고 방지)
-  void knownHanjaIds
+  // 연습 모드에서 이번 세션에 사용할 한자 리스트 (중복 방지 + 고정 랜덤 순서)
+  const [practiceSessionList, setPracticeSessionList] = useState<typeof hanjaList>([])
   
   // DB에서 진행 상태 불러오기 함수
   const loadProgress = useCallback(async () => {
@@ -261,30 +260,8 @@ const StudyMode = () => {
   // 현재 학습할 한자 리스트 계산
   const hanjaList_filtered = useMemo(() => {
     if (isPracticeMode) {
-      // 연습 모드
-      let filtered: typeof hanjaList = []
-      
-      if (isReviewMode) {
-        // 복습 모드: 모르는 한자만 다시 연습
-        filtered = hanjaList.filter((h) => unknownHanjaIds.includes(h.id))
-      } else {
-        // 일반 모드
-        if (isChapterMode) {
-          // 단원별 모드: 해당 단원의 한자만
-          filtered = hanjaList.filter((h) => h.chapter === chapter)
-        } else {
-          // 전체 모드: 학습했던 한자만
-          const studiedIds = new Set([...knownHanjaIds, ...unknownHanjaIds])
-          filtered = hanjaList.filter((h) => studiedIds.has(h.id))
-          
-          if (studiedIds.size === 0) {
-            console.warn('⚠️ 학습한 한자가 없습니다. 전체 연습을 하려면 먼저 학습을 시작해주세요.')
-          }
-        }
-      }
-      
-      // 랜덤으로 섞기 (인덱스 기반으로 사용하기 위해 미리 섞기)
-      return shuffleArray(filtered)
+      // 연습 모드: 이미 만들어 둔 세션 리스트 사용 (중복 없이 고정 랜덤 순서)
+      return practiceSessionList
     } else {
       // 학습 모드
       if (!chapter) return []
@@ -299,7 +276,44 @@ const StudyMode = () => {
         return allChapterHanja
       }
     }
-  }, [hanjaList, chapter, isChapterMode, knownHanjaIds, unknownHanjaIds, isReviewMode, isPracticeMode])
+  }, [hanjaList, chapter, isChapterMode, knownHanjaIds, unknownHanjaIds, isReviewMode, isPracticeMode, practiceSessionList])
+
+  // 연습 모드: 세션용 리스트를 한 번만 생성 (중복 없이 랜덤 순서)
+  useEffect(() => {
+    if (!isPracticeMode || isLoadingProgress) return
+
+    if (!isReviewMode) {
+      // 연습 일반 모드: 이미 세션 리스트가 있으면 그대로 사용 (인덱스만 증가)
+      if (practiceSessionList.length > 0) return
+
+      let base: typeof hanjaList = []
+      if (isChapterMode && chapter) {
+        // 단원 연습: 해당 단원 전체
+        base = hanjaList.filter((h) => h.chapter === chapter)
+      } else {
+        // 전체 연습: "학습한 한자"만 대상으로
+        const studiedIds = new Set([...knownHanjaIds, ...unknownHanjaIds])
+        const studiedList = hanjaList.filter((h) => studiedIds.has(h.id))
+        if (studiedIds.size === 0) {
+          console.warn('⚠️ 학습한 한자가 없습니다. 전체 연습을 하려면 먼저 학습을 시작해주세요.')
+        }
+        // 전체 연습은 학습한 한자 중 랜덤 20개만 사용
+        const shuffled = shuffleArray(studiedList)
+        base = shuffled.slice(0, 20)
+      }
+
+      setPracticeSessionList(shuffleArray(base))
+      setCurrentIndex(0)
+    } else {
+      // 연습 복습 모드: 이미 세션 리스트가 있으면 그대로 사용 (인덱스만 증가)
+      if (practiceSessionList.length > 0) return
+
+      // 모르는 한자만 다시 세션 리스트로 생성
+      const base = hanjaList.filter((h) => unknownHanjaIds.includes(h.id))
+      setPracticeSessionList(shuffleArray(base))
+      setCurrentIndex(0)
+    }
+  }, [isPracticeMode, isChapterMode, chapter, hanjaList, knownHanjaIds, unknownHanjaIds, isReviewMode, isLoadingProgress, practiceSessionList.length])
   
   // studyList가 변경되면 currentIndex 조정
   useEffect(() => {
