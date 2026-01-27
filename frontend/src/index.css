@@ -1,3 +1,8 @@
+:root {
+  /* 공통 한자 폰트 설정 */
+  --hanja-font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -25,9 +30,9 @@ body {
   }
 }
 
-/* 한자 폰트 최적화 */
+/* 한자 폰트 최적화 - 공통 폰트 사용 */
 .hanja-character {
-  font-family: 'Noto Sans CJK KR', 'Malgun Gothic', sans-serif;
+  font-family: var(--hanja-font-family);
   font-weight: 500;
 }
 

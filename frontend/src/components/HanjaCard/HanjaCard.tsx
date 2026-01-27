@@ -69,7 +69,7 @@ const Main = styled.div`
 `
 
 const Character = styled.div`
-  font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif !important;
+  font-family: var(--hanja-font-family) !important;
   font-size: clamp(8rem, 20vw, 18rem);
   font-weight: 800;
   line-height: 1;
@@ -112,7 +112,7 @@ const InfoLabel = styled.span`
 `
 
 const InfoValue = styled.span`
-  font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif !important;
+  font-family: var(--hanja-font-family) !important;
   font-size: clamp(1.2rem, 3vw, 1.8rem);
   font-weight: 500;
   color: #1a1a1a;
@@ -139,7 +139,7 @@ const ExampleItem = styled.div`
 `
 
 const ExampleSentence = styled.span`
-  font-family: 'Noto Sans KR', 'Noto Sans CJK KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif !important;
+  font-family: var(--hanja-font-family) !important;
   font-size: clamp(1.5rem, 3.5vw, 2rem);
   font-weight: 500;
   color: #1a1a1a;
