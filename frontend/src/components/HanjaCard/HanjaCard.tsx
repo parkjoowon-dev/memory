@@ -168,29 +168,39 @@ const SwipeGuide = styled.div`
 const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
   const [showInfo, setShowInfo] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [isReady, setIsReady] = useState(false) // 카드가 준비되었는지 여부
   const controls = useAnimation()
 
   useEffect(() => {
     // 마운트 상태 설정 (클라이언트 사이드에서만 실행)
     setIsMounted(true)
+    
+    // hanja가 변경되면 즉시 내용을 숨기고 준비 상태를 리셋
     setShowInfo(false)
+    setIsReady(false)
     
     // 카드 초기화 - 명시적으로 opacity와 y를 리셋
     // 이전 스와이프 상태가 남아있을 수 있으므로 강제로 리셋
     // 즉시 상태를 리셋 (애니메이션 없이) - 동기적으로 실행
-    controls.set({ y: 0, opacity: 1, scale: 1 })
+    controls.set({ y: 0, opacity: 0, scale: 1 })
     
-    // 짧은 지연 후 애니메이션 시작 (상태가 확실히 리셋되도록)
-    const timeoutId = setTimeout(() => {
-      controls.start({ 
-        y: 0, 
-        opacity: 1, 
-        scale: 1,
-        transition: { duration: 0.2 }
-      }).catch(() => {
-        // 에러 무시 (컴포넌트가 언마운트된 경우)
-      })
-    }, 10)
+    // 짧은 지연 후 카드를 표시하고 애니메이션 시작
+    const readyTimeout = setTimeout(() => {
+      setIsReady(true)
+      controls.set({ y: 0, opacity: 1, scale: 1 })
+      
+      // 카드가 준비된 후 애니메이션 시작
+      setTimeout(() => {
+        controls.start({ 
+          y: 0, 
+          opacity: 1, 
+          scale: 1,
+          transition: { duration: 0.2 }
+        }).catch(() => {
+          // 에러 무시 (컴포넌트가 언마운트된 경우)
+        })
+      }, 10)
+    }, 50)
     
     const timer = setTimeout(() => {
       setShowInfo(true)
@@ -199,11 +209,12 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     // cleanup 함수: hanja가 변경될 때 타이머와 상태 리셋
     return () => {
       clearTimeout(timer)
-      clearTimeout(timeoutId)
+      clearTimeout(readyTimeout)
       setShowInfo(false)
+      setIsReady(false)
       // cleanup 시에도 상태를 리셋
       try {
-        controls.set({ y: 0, opacity: 1, scale: 1 })
+        controls.set({ y: 0, opacity: 0, scale: 1 })
       } catch {
         // 에러 무시
       }
@@ -244,17 +255,17 @@ const HanjaCard = ({ hanja, onSwipe }: HanjaCardProps) => {
     }
   }
 
-  // 마운트되지 않았으면 빈 div 반환 (SSR 대응)
-  if (!isMounted) {
+  // 마운트되지 않았거나 준비되지 않았으면 빈 div 반환 (이전 카드가 보이지 않도록)
+  if (!isMounted || !isReady) {
     return (
       <Container>
         <Card
-          style={{ opacity: 1 }}
+          style={{ opacity: 0, visibility: 'hidden' }}
           initial={false}
           animate={false}
         >
           <Main>
-            <Character>{hanja.character}</Character>
+            <Character></Character>
           </Main>
         </Card>
       </Container>
