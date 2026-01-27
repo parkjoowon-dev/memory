@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from database import get_db, engine, Base
 from crud import (
@@ -300,7 +300,10 @@ if os.path.exists(static_dir):
         # index.html 반환 (React Router가 라우팅 처리)
         index_path = os.path.join(static_dir, "index.html")
         if os.path.exists(index_path):
-            return FileResponse(index_path)
+            response = FileResponse(index_path)
+            # index.html은 캐시하지 않음 (항상 최신 버전)
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
         
         return {"error": "Frontend not found"}
 else:
