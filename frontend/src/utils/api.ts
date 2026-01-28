@@ -79,6 +79,13 @@ export async function fetchHanjaByChapter(
   return fetchApi<{ hanja: Hanja[] }>(`/api/hanja/chapter/${chapter}`)
 }
 
+/**
+ * 존재하는 단원 번호 목록 가져오기
+ */
+export async function fetchChapters(): Promise<ApiResponse<number[]>> {
+  return fetchApi<number[]>('/api/chapters')
+}
+
 // 학습 진행 상태 타입
 export interface StudyProgress {
   user_id: string

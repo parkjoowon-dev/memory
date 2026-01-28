@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 from database import get_db, engine, Base
 from crud import (
-    get_all_hanja, get_hanja_by_id, get_hanja_by_chapter,
+    get_all_hanja, get_hanja_by_id, get_hanja_by_chapter, get_all_chapters,
     create_hanja, update_hanja, delete_hanja,
     get_study_progress, get_study_progress_by_chapter, get_all_study_progress,
     upsert_study_progress, delete_study_progress,
@@ -64,6 +64,13 @@ async def get_hanja_by_chapter_endpoint(chapter: int, db: Session = Depends(get_
     """특정 단원의 한자 데이터를 반환합니다."""
     hanja_list = get_hanja_by_chapter(db, chapter)
     return {"hanja": hanja_list}
+
+
+@app.get("/api/chapters", response_model=List[int])
+async def get_chapter_list(db: Session = Depends(get_db)):
+    """현재 등록된 한자 기준으로 존재하는 단원 번호 목록을 반환합니다."""
+    chapters = get_all_chapters(db)
+    return chapters
 
 
 @app.post("/api/hanja", response_model=Hanja, status_code=201)

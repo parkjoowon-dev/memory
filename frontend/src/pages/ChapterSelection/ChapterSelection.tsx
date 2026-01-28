@@ -1,29 +1,48 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
-import { fetchAllStudyProgress } from '../../utils/api'
+import { fetchAllStudyProgress, fetchChapters } from '../../utils/api'
 import './ChapterSelection.css'
 
 const ChapterSelection = () => {
   const navigate = useNavigate()
   const { hanjaList, userName } = useStore()
   const [studyProgress, setStudyProgress] = useState<Map<number, { known: number; total: number }>>(new Map())
+  const [chapters, setChapters] = useState<number[]>([])
   
   const userId = userName || 'default'
-  
-  // DB에서 학습 진행 상태 불러오기
+
+  // 단원 목록 & 학습 진행 상태 불러오기
   useEffect(() => {
     const loadProgress = async () => {
       try {
+        // 1) 단원 목록 불러오기 (DB 기준)
+        const chaptersRes = await fetchChapters()
+        if (chaptersRes.data) {
+          setChapters(chaptersRes.data)
+        } else {
+          // API 실패 시, 프론트에서 한자 목록 기준으로 단원 목록을 추출 (fallback)
+          const uniqueChapters = Array.from(new Set(hanjaList.map((h) => h.chapter))).sort(
+            (a, b) => a - b,
+          )
+          setChapters(uniqueChapters)
+        }
+
+        // 2) 학습 진행 상태 불러오기
         const response = await fetchAllStudyProgress(userId)
         if (response.data) {
           // 단원별로 학습 상태 집계
           const progressMap = new Map<number, { known: number; total: number }>()
           
-          // 각 단원별로 초기화
-          for (let i = 1; i <= 10; i++) {
-            progressMap.set(i, { known: 0, total: 0 })
-          }
+          // API에서 받은 단원 목록 기준으로 초기화
+          const baseChapters =
+            chaptersRes.data && chaptersRes.data.length > 0
+              ? chaptersRes.data
+              : Array.from(new Set(hanjaList.map((h) => h.chapter)))
+
+          baseChapters.forEach((chapter) => {
+            progressMap.set(chapter, { known: 0, total: 0 })
+          })
           
           // 학습한 한자들을 단원별로 집계
           response.data.progress.forEach((p) => {
@@ -43,11 +62,10 @@ const ChapterSelection = () => {
     }
     
     loadProgress()
-  }, [userId])
+  }, [userId, hanjaList])
   
-  // 단원별 한자 개수 계산
-  const chapters = Array.from({ length: 10 }, (_, i) => {
-    const chapterId = i + 1
+  // 단원별 한자 개수 계산 (API에서 받은 단원 목록 기준)
+  const chapterCards = chapters.map((chapterId) => {
     const chapterHanja = hanjaList.filter((h) => h.chapter === chapterId)
     const chapterProgress = studyProgress.get(chapterId) || { known: 0, total: 0 }
     
@@ -80,7 +98,7 @@ const ChapterSelection = () => {
       </div>
 
       <div className="chapter-list">
-        {chapters.map((chapter) => (
+        {chapterCards.map((chapter) => (
           <div key={chapter.id} className={`chapter-card ${chapter.completed ? 'completed' : ''}`}>
             <Link
               to={`/study/${chapter.id}`}

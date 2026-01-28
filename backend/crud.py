@@ -33,6 +33,13 @@ def get_all_hanja(db: Session) -> List[Hanja]:
     return [_model_to_schema(h) for h in hanja_list]
 
 
+def get_all_chapters(db: Session) -> List[int]:
+    """존재하는 모든 단원 번호 목록을 반환합니다 (오름차순, 중복 제거)."""
+    stmt = select(HanjaModel.chapter).distinct().order_by(HanjaModel.chapter)
+    chapters = db.execute(stmt).scalars().all()
+    return list(chapters)
+
+
 def get_hanja_by_id(db: Session, hanja_id: str) -> Optional[Hanja]:
     """ID로 한자 데이터를 가져옵니다 (ORM 사용)."""
     stmt = select(HanjaModel).where(HanjaModel.id == hanja_id)
