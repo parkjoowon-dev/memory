@@ -6,7 +6,7 @@ interface HanjaFormProps {
   initialData: Hanja | null
   editingId: string | null
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (mode: 'create' | 'edit') => void
 }
 
 const Overlay = styled.div`
@@ -217,7 +217,22 @@ const HanjaForm = ({ initialData, editingId, onClose, onSuccess }: HanjaFormProp
         // 등록/수정 성공 시 단원을 로컬 스토리지에 저장
         localStorage.setItem('hanja_last_chapter', formData.chapter.toString())
         alert(editingId ? '수정되었습니다.' : '등록되었습니다.')
-        onSuccess()
+
+        if (editingId) {
+          // 수정 모드: 목록 갱신 + 팝업 닫기
+          onSuccess('edit')
+        } else {
+          // 등록 모드: 목록 갱신 + 폼만 초기화 (팝업 유지)
+          onSuccess('create')
+          setFormData((prev) => ({
+            character: '',
+            sound: '',
+            meaning: '',
+            chapter: prev.chapter, // 방금 저장한 단원 유지
+            difficulty: prev.difficulty,
+            examples: [],
+          }))
+        }
       } else {
         const error = await response.json()
         alert(`오류: ${error.detail || '저장에 실패했습니다.'}`)

@@ -199,9 +199,15 @@ const Admin = () => {
     setEditingId(null)
   }
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = (mode: 'create' | 'edit') => {
+    // 항상 목록은 새로고침
     loadHanjaList()
-    handleFormClose()
+
+    if (mode === 'edit') {
+      // 수정일 때만 팝업 닫기
+      handleFormClose()
+    }
+    // create 모드는 팝업을 계속 열어둔 채로 새 입력을 받을 수 있게 둔다.
   }
 
   // 단원 목록 추출 (중복 제거 및 정렬)

@@ -164,6 +164,8 @@ const StudyMode = () => {
   const [isLoadingProgress, setIsLoadingProgress] = useState(true)
   // 연습 모드에서 이번 세션에 사용할 한자 리스트 (중복 방지 + 고정 랜덤 순서)
   const [practiceSessionList, setPracticeSessionList] = useState<typeof hanjaList>([])
+  // 연습 모드: 이번 세션에서 틀린 단어들 (복습용)
+  const [practiceWrongIds, setPracticeWrongIds] = useState<string[]>([])
   
   // DB에서 진행 상태 불러오기 함수
   const loadProgress = useCallback(async () => {
@@ -286,6 +288,9 @@ const StudyMode = () => {
       // 연습 일반 모드: 이미 세션 리스트가 있으면 그대로 사용 (인덱스만 증가)
       if (practiceSessionList.length > 0) return
 
+      // 새 연습 세션 시작 시, 이전 복습용 틀린 단어 목록 초기화
+      setPracticeWrongIds([])
+
       let base: typeof hanjaList = []
       if (isChapterMode && chapter) {
         // 단원 연습: 해당 단원 전체
@@ -308,23 +313,26 @@ const StudyMode = () => {
       // 연습 복습 모드: 이미 세션 리스트가 있으면 그대로 사용 (인덱스만 증가)
       if (practiceSessionList.length > 0) return
 
-      // 모르는 한자만 다시 세션 리스트로 생성
-      const base = hanjaList.filter((h) => unknownHanjaIds.includes(h.id))
+      // 이번 세션에서 틀렸던 한자들만 복습 대상으로 사용
+      const base = hanjaList.filter((h) => practiceWrongIds.includes(h.id))
       setPracticeSessionList(shuffleArray(base))
       setCurrentIndex(0)
     }
-  }, [isPracticeMode, isChapterMode, chapter, hanjaList, knownHanjaIds, unknownHanjaIds, isReviewMode, isLoadingProgress, practiceSessionList.length])
+  }, [isPracticeMode, isChapterMode, chapter, hanjaList, knownHanjaIds, unknownHanjaIds, isReviewMode, isLoadingProgress, practiceSessionList.length, practiceWrongIds])
   
   // studyList가 변경되면 currentIndex 조정
   useEffect(() => {
-    if (hanjaList_filtered.length > 0) {
-      if (currentIndex >= hanjaList_filtered.length) {
-        setCurrentIndex(0)
+    // ✅ 이 효과는 "학습 모드"에서만 동작하도록 제한
+    if (!isPracticeMode) {
+      if (hanjaList_filtered.length > 0) {
+        if (currentIndex >= hanjaList_filtered.length) {
+          setCurrentIndex(0)
+        }
+      } else if (hanjaList_filtered.length === 0 && isReviewMode) {
+        // 학습 모드 리뷰에서 모든 한자를 알고 있으면 완료
+        alert('복습이 완료되었습니다!')
+        navigate('/chapters')
       }
-    } else if (hanjaList_filtered.length === 0 && isReviewMode) {
-      // 리뷰 모드에서 모든 한자를 알고 있으면 완료
-      alert(isPracticeMode ? '복습이 완료되었습니다!' : '복습이 완료되었습니다!')
-      navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
     }
   }, [hanjaList_filtered.length, currentIndex, isReviewMode, navigate, isPracticeMode, isChapterMode])
   
@@ -340,6 +348,8 @@ const StudyMode = () => {
     if (!currentHanja) return
     
     const isKnown = result === 'known'
+    // 연습 모드용: 이번 스와이프 이후 기준으로 사용할 "업데이트된 틀린 단어 목록"을 미리 계산
+    let nextPracticeWrongIds = practiceWrongIds
     
     // DB에 진행 상태 저장
     try {
@@ -381,7 +391,7 @@ const StudyMode = () => {
       console.error('진행 상태 저장 실패:', error)
     }
     
-    // 상태 업데이트
+    // 상태 업데이트 (DB 기준 상태)
     if (isKnown) {
       setKnownHanjaIds((prev) => new Set(prev).add(currentHanja.id))
       setUnknownHanjaIds((prev) => prev.filter((id) => id !== currentHanja.id))
@@ -393,6 +403,21 @@ const StudyMode = () => {
         return prev
       })
     }
+
+    // 연습 모드에서 이번 세션의 "틀린 단어" 관리 (복습용)
+    if (isPracticeMode) {
+      if (!isKnown) {
+        // 틀린 경우: 목록에 추가
+        if (!nextPracticeWrongIds.includes(currentHanja.id)) {
+          nextPracticeWrongIds = [...nextPracticeWrongIds, currentHanja.id]
+        }
+      } else {
+        // 맞힌 경우: 목록에서 제거 (복습 대상 제외)
+        nextPracticeWrongIds = nextPracticeWrongIds.filter((id) => id !== currentHanja.id)
+      }
+      // 계산된 결과를 한 번만 반영
+      setPracticeWrongIds(nextPracticeWrongIds)
+    }
     
     // 다음 한자로 이동 (인덱스 기반으로 통일)
     if (currentIndex < hanjaList_filtered.length - 1) {
@@ -400,47 +425,76 @@ const StudyMode = () => {
       setCurrentIndex(prev => prev + 1)
     } else {
       // 모든 한자를 다 봤을 때
-      if (!isReviewMode) {
-        // 일반 모드에서 끝났을 때
-        if (result === 'unknown') {
-          const progressData = await loadProgress()
-          if (progressData && progressData.unknownIds.length > 0) {
+      if (isPracticeMode) {
+        // ✅ 연습 모드: DB is_known 대신, 이번 세션의 practiceWrongIds 기준으로만 복습 제어
+        if (!isReviewMode) {
+          // 연습 1회전 끝
+          if (nextPracticeWrongIds.length > 0) {
+            // 틀린 단어가 있으면 복습 모드로 진입
             setIsReviewMode(true)
+            setPracticeSessionList([]) // 복습용 리스트를 다시 만들도록 초기화
             setCurrentIndex(0)
           } else {
-            alert(isPracticeMode ? '연습이 완료되었습니다!' : '학습이 완료되었습니다!')
-            navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
+            // 모두 맞혔으면 연습 완료
+            alert('연습이 완료되었습니다!')
+            navigate(isChapterMode ? '/chapters' : '/quiz')
           }
         } else {
-          const progressData = await loadProgress()
-          if (progressData) {
-            if (progressData.unknownIds.length === 0) {
-              alert(isPracticeMode ? '연습이 완료되었습니다!' : '학습이 완료되었습니다!')
-              navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
-            } else {
-              setIsReviewMode(true)
-              setCurrentIndex(0)
-            }
+          // 연습 복습 모드에서 한 바퀴 끝
+          if (nextPracticeWrongIds.length > 0) {
+            // 아직도 틀린 단어가 남아 있으면 다시 복습 한 바퀴
+            setPracticeSessionList([])
+            setCurrentIndex(0)
+          } else {
+            // 이번 세션 기준으로 모든 틀린 단어를 맞혔으면 복습 종료
+            alert('복습이 완료되었습니다!')
+            navigate(isChapterMode ? '/chapters' : '/quiz')
           }
         }
       } else {
-        // 리뷰 모드에서 끝났을 때
-        if (result === 'unknown') {
-          const progressData = await loadProgress()
-          if (progressData && progressData.unknownIds.length > 0) {
-            setCurrentIndex(0)
+        // ✅ 학습 모드: 기존처럼 DB is_known 기반으로 복습/완료 판단
+        if (!isReviewMode) {
+          // 일반 모드에서 끝났을 때
+          if (result === 'unknown') {
+            const progressData = await loadProgress()
+            if (progressData && progressData.unknownIds.length > 0) {
+              setIsReviewMode(true)
+              setCurrentIndex(0)
+            } else {
+              alert('학습이 완료되었습니다!')
+              navigate('/chapters')
+            }
           } else {
-            alert('복습이 완료되었습니다!')
-            navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
+            const progressData = await loadProgress()
+            if (progressData) {
+              if (progressData.unknownIds.length === 0) {
+                alert('학습이 완료되었습니다!')
+                navigate('/chapters')
+              } else {
+                setIsReviewMode(true)
+                setCurrentIndex(0)
+              }
+            }
           }
         } else {
-          const progressData = await loadProgress()
-          if (progressData) {
-            if (progressData.unknownIds.length === 0) {
-              alert('복습이 완료되었습니다!')
-              navigate(isChapterMode ? '/chapters' : (isPracticeMode ? '/quiz' : '/chapters'))
-            } else {
+          // 학습 복습 모드에서 끝났을 때
+          if (result === 'unknown') {
+            const progressData = await loadProgress()
+            if (progressData && progressData.unknownIds.length > 0) {
               setCurrentIndex(0)
+            } else {
+              alert('복습이 완료되었습니다!')
+              navigate('/chapters')
+            }
+          } else {
+            const progressData = await loadProgress()
+            if (progressData) {
+              if (progressData.unknownIds.length === 0) {
+                alert('복습이 완료되었습니다!')
+                navigate('/chapters')
+              } else {
+                setCurrentIndex(0)
+              }
             }
           }
         }
